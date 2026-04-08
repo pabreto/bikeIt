@@ -75,6 +75,7 @@ function render() {
   // 4. Stats and Timeseries
   const tableStatsElem = document.getElementById("table_stats");
  if (currentUser != "Comparison") {
+  tableStatsElem.style.display = "block";
   if (tableStatsElem) {
     if (currentDistrict == "Barcelona") {
       tableStatsElem.src = `stats/${currentUser}/stats-${currentUser}.png`;
