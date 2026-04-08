@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bike_it</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- 🔝 Top navigation -->
+  <header>
+    <div class="user-nav">
+      <button onclick="navigate('PA')">PA</button>
+      <button onclick="navigate('Hubert')">Hubert</button>
+      <button onclick="navigate('Comparison')">Comparison</button>
+    </div>
+    <div class="district-nav" id="districtNav"></div>
+  </header>
+
+  <div class="top-section">
+    <img id="bar_pic" class="side-bar" />
+    <img id="main_pic" />
+  </div>
+
+  <div id="comparison_section" class="comparison-container" style="display: none;">
+    <div class="comparison-column">
+      <!-- <h3>PA</h3> -->
+      <div style="display: flex; align-items: center;">
+         <img id="comp_left" style="width: 70%;" />
+         <img id="bar_pa" style="width: 25%; margin-left: 5px;" />
+      </div>
+    </div>
+    <div class="comparison-column">
+      <!-- <h3>Hubert</h3> -->
+      <div style="display: flex; align-items: center; flex-direction: row-reverse;">
+         <img id="comp_right" style="width: 70%;" />
+         <img id="bar_hubert" style="width: 25%; margin-right: 5px;" />
+      </div>
+    </div>
+  </div>
+  
+  <div class="table_stats">
+    <img id="table_stats" />
+  </div>
+  
+  <div class="timeseries">
+    <img id="timeseries" />
+  </div>
+  
+  <!-- 🗺️ District selector -->
+  <div class="district-grid" id="districtGrid"></div>
+
+  <script src="functions.js"></script>
+</body>
+</html>

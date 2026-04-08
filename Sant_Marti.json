@@ -1,0 +1,38 @@
+{
+  "n": 2551,
+  "m": 3932,
+  "k_avg": 3.0827126617012937,
+  "edge_length_total": 257001.63872662775,
+  "edge_length_avg": 65.3615561359684,
+  "streets_per_node_avg": 3.1340650725205803,
+  "streets_per_node_counts": {
+    "0": 0,
+    "1": 359,
+    "2": 57,
+    "3": 1047,
+    "4": 1066,
+    "5": 15,
+    "6": 7
+  },
+  "streets_per_node_proportions": {
+    "0": 0.0,
+    "1": 0.14072912583300667,
+    "2": 0.022344178753430026,
+    "3": 0.41042728341826734,
+    "4": 0.41787534300274404,
+    "5": 0.005880047040376323,
+    "6": 0.0027440219521756176
+  },
+  "intersection_count": 2192,
+  "street_length_total": 257001.63872662775,
+  "street_segment_count": 3932,
+  "street_length_avg": 65.3615561359684,
+  "circuity_avg": 1.0212562831244631,
+  "self_loop_proportion": 0.001017293997965412,
+  "clean_intersection_count": 955,
+  "node_density_km": 204.6190399145291,
+  "intersection_density_km": 175.82318129856833,
+  "edge_density_km": 20614.436915994997,
+  "street_density_km": 20614.436915994997,
+  "clean_intersection_density_km": 76.6017965967759
+}
