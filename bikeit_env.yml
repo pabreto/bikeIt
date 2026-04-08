@@ -1,0 +1,12 @@
+name: bikeit_env
+channels:
+  - defaults
+dependencies:
+  - geopandas
+  - matplotlib
+  - numpy
+  - ipykernel
+  - contextily
+  - folium
+  - nicegui
+prefix: /Users/hbretonniere/miniconda3/envs/bikeit_env

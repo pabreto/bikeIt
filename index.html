@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bike_it</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- 🔝 Top navigation -->
+  <header>
+    <div class="user-nav">
+      <button onclick="navigate('Béatrice')">PA</button>
+    </div>
+    <div class="district-nav" id="districtNav"></div>
+  </header>
+
+  <div class="top-section">
+    <img id="bar_pic" class="side-bar" />
+    <img id="main_pic" />
+  </div>
+
+  
+  <div class="table_stats">
+    <img id="table_stats" />
+  </div>
+  
+  <div class="timeseries">
+    <img id="timeseries" />
+  </div>
+  
+  <!-- 🗺️ District selector -->
+  <div class="district-grid" id="districtGrid"></div>
+
+  <script src="functions.js"></script>
+</body>
+</html>
