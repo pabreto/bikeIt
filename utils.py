@@ -15,6 +15,7 @@ import json
 from matplotlib.lines import Line2D
 import shutil
 import contextily as ctx
+from unidecode import unidecode 
 
 
 def get_graph_stats(graph,district):
@@ -227,8 +228,7 @@ def get_number_of_streets(graph):
 
 # Iterate over all edges in the graph, retrieving the attribute data for each edge
     for _, _, data in graph.edges(data=True):
-    # The street name is stored under the key 'name'
-        name_entry = data.get('name')
+        name_entry = normalize_street_name(data.get('name'))
     
     # Check if the 'name' attribute exists
         if name_entry is not None:
@@ -563,8 +563,9 @@ def get_missing_streets(mapped_streets,full_graph):
     street_names_full_graph = []
 
     for u, v, key, data in full_graph.edges(keys=True, data=True):
-        name = data.get("name")
-        if name:
+        name = normalize_street_name(data.get("name"))
+        #print(name)
+        if name and name != "unkown":
             street_names_full_graph.append(name)
 
     unique_street_names_full_graph = set()
@@ -575,3 +576,30 @@ def get_missing_streets(mapped_streets,full_graph):
             unique_street_names_full_graph.add(name)
 
     return list(unique_street_names_full_graph - mapped_streets)
+
+def normalize_street_name(name):
+    if isinstance(name, str):
+        return (
+            unidecode(name)
+            .replace("  ", " ")
+            .replace("  "," ")
+            .lower()
+            .replace("d'", "")
+            .replace("l'", "")            
+            .replace(" de ", " ")
+            .replace(" del ", " ")
+            .replace("*","")
+        )
+    elif isinstance(name, list):
+        return [
+            unidecode(n)
+            .replace("  ", " ")
+            .replace(" "," ")
+            .lower()
+            .replace("d'", "")
+            .replace("l'", "")            
+            .replace(" de ", " ")
+            .replace(" del ", " ")
+            .replace("*","")
+            for n in name
+        ]
