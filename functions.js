@@ -5,18 +5,36 @@ const defaultDistrict = "Barcelona";
 
 let currentUser = defaultUser;
 let currentDistrict = defaultDistrict;
+let currentDate = null;
+let availableDates = {};
+
+async function loadDates() {
+  try {
+    const res = await fetch("dates.json");
+    availableDates = await res.json();
+  } catch (err) {
+    console.error("Error loading dates.json:", err);
+    availableDates = {};
+  }
+}
 
 function navigate(user) {
-  updateURL(user, currentDistrict);
+  updateURL(user, currentDistrict, currentDate);
 }
 
 function selectDistrict(district) {
-  updateURL(currentUser, district);
+  updateURL(currentUser, district, currentDate);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function updateURL(user, district) {
-  window.location.hash = `${user}/${district}`;
+function selectDate(date) {
+  currentDate = date;
+  updateURL(currentUser, currentDistrict, date);
+}
+
+function updateURL(user, district, date = null) {
+  const datePart = date ? `/${date}` : "";
+  window.location.hash = `${user}/${district}${datePart}`;
 }
 
 function readURL() {
@@ -24,11 +42,13 @@ function readURL() {
   if (!hash) {
     currentUser = defaultUser;
     currentDistrict = defaultDistrict;
+    currentDate = null;
     return;
   }
   const parts = hash.split("/");
   currentUser = parts[0] || defaultUser;
   currentDistrict = parts[1] || defaultDistrict;
+  currentDate = parts[2] || null;
 }
 
 function render() {
@@ -43,13 +63,45 @@ function render() {
   // 2. Main Picture
   const mainPicElem = document.getElementById("main_pic");
   const barPicElem = document.getElementById("bar_pic");
+  const slider = document.getElementById("dateSlider");
+
+  if (slider) {
+    slider.innerHTML = "";
+
+    const dates =
+    (availableDates[currentDistrict] &&
+    availableDates[currentDistrict][currentUser]) || [];
+
+    // Add "default" option
+    const defaultBtn = document.createElement("button");
+    defaultBtn.textContent = "Main";
+    if (!currentDate) defaultBtn.classList.add("active");
+    defaultBtn.onclick = () => selectDate(null);
+    console.log("DATES:", availableDates);
+    console.log("CURRENT:", currentDistrict, currentUser);
+    slider.appendChild(defaultBtn);
+
+    dates.forEach(date => {
+      const btn = document.createElement("button");
+      btn.textContent = date;
+      if (date === currentDate) btn.classList.add("active");
+      btn.onclick = () => selectDate(date);
+      slider.appendChild(btn);
+    });
+  }
   if (currentUser !== "Comparison") {
     if (barPicElem) {
       barPicElem.style.display = "block";
       barPicElem.src = `stats/${currentUser}/stats_bars_${currentDistrict}_${currentUser}.png`;
     }
     if (mainPicElem) {
-      mainPicElem.src = `plots/${currentUser}/${currentDistrict}-${currentUser}.png`;
+      if (currentDate) {
+        // use dated image
+        mainPicElem.src = `plots/${currentUser}/${currentDistrict}-${currentUser}.${currentDate}.png`;
+      } else {
+        // default image
+        mainPicElem.src = `plots/${currentUser}/${currentDistrict}-${currentUser}.png`;
+      }
     }
   } else {
     // Hide the top-section side bar when in Comparison mode
@@ -126,6 +178,9 @@ function render() {
   }
 }
 
-function init() { render(); }
+async function init() {
+  await loadDates();  // ⬅️ load JSON first
+  render();
+}
 window.addEventListener("load", init);
 window.addEventListener("hashchange", render);

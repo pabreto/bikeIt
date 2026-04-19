@@ -1,23 +1,24 @@
 import geopandas as gpd
 import pandas as pd
-import gpxpy
 import glob
-import gpxpy.gpx
-from shapely.geometry import LineString
+# import gpxpy.gpx
+# from shapely.geometry import LineString
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from shapely.geometry import Point
-import contextily as ctx
-import matplotlib.animation as animation
+# from shapely.geometry import Point
+# import contextily as ctx
+# import matplotlib.animation as animation
 import numpy as np
 from utils import *
 import osmnx as ox
 import os
-import ast
-import argparse
+# import ast
 import re
+import argparse
+import json
+from collections import defaultdict
 
 parser = argparse.ArgumentParser()
 
@@ -263,6 +264,36 @@ for district in list_districts:
     plt.savefig(f"plots/Comparison/timeseries/{district}.png")
     plt.close()
 
-# print("Starting GPX geometry export...")
-# for user in users:
-#         export_snapped_gpx(graph_dict["Barcelona"], user, "Barcelona")
+## Generae the unique dates list
+
+print('Generating unique dates')
+base_dir = "plots"
+
+pattern = re.compile(r"(.+)-(.+)\.(\d{4}-\d{2}-\d{2})\.png")
+
+dates = defaultdict(lambda: defaultdict(set))
+
+for user in users:
+    user_path = os.path.join(base_dir, user)
+    if not os.path.isdir(user_path):
+        continue
+
+    for file in os.listdir(user_path):
+        match = pattern.match(file)
+        if match:
+            district, user_name, date = match.groups()
+            
+            # 🔑 use the loop 'user' (safer than filename)
+            dates[district][user].add(date)
+
+# convert sets to sorted lists
+dates = {
+    district: {
+        user: sorted(list(date_set))
+        for user, date_set in users_dict.items()
+    }
+    for district, users_dict in dates.items()
+}
+
+with open("dates.json", "w") as f:
+    json.dump(dates, f, indent=2)
