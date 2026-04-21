@@ -110,6 +110,12 @@ comparison-container {
   align-items: center;
 }
 
+.date-slider {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 .image-container {
   width: 100%;
   height: 80vh;          /* main visual space */

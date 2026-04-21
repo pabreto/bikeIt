@@ -74,7 +74,7 @@ function render() {
 
     // Add "default" option
     const defaultBtn = document.createElement("button");
-    defaultBtn.textContent = "Main";
+    defaultBtn.textContent = "Latest date";
     if (!currentDate) defaultBtn.classList.add("active");
     defaultBtn.onclick = () => selectDate(null);
     console.log("DATES:", availableDates);
@@ -89,6 +89,7 @@ function render() {
       slider.appendChild(btn);
     });
   }
+
   if (currentUser !== "Comparison") {
     if (barPicElem) {
       barPicElem.style.display = "block";
