@@ -78,6 +78,12 @@ for district in list_districts:
         ox.save_graphml(G=graph, filepath=filepath)
     else:
         graph = ox.load_graphml(filepath)
+    edges_to_remove = [
+        (u, v, k) for u, v, k, data in graph.edges(keys=True, data=True)
+        if data.get('length', 0) < 25
+    ]
+    graph.remove_edges_from(edges_to_remove)
+  #  print(f"Removed {len(edges_to_remove)} short edges from {district}")
     graph_dict[district] = graph
 
 stats={}
@@ -97,10 +103,11 @@ for user in users:
        for district in args.generate_missing_streets_district:
         if args.generate_missing_streets_user:
             if user in args.generate_missing_streets_user:
-                street_names_mapped[district] = { edge[1]for edge in full_history_edges[district] }
+                street_names_mapped[district] = { normalize_street_name(edge[1]) for edge in full_history_edges[district] }
                 print(f"user-{user},district-{district}")
+             #   print(street_names_mapped[district])
                 missing_streets[district,user] = get_missing_streets(street_names_mapped[district],graph_dict[district])
-                print(missing_streets[district,user])
+                print("missing",missing_streets[district,user], len(missing_streets[district,user]))
             else:
                 continue
     

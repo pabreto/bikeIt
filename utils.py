@@ -240,11 +240,37 @@ def get_number_of_streets(graph):
             elif isinstance(name_entry, str):
             # If the value is a single string, add it to the set
                 unique_street_names_from_G.add(name_entry)
+                
 
 # The count of unique street names is the length of the final set
     count_unique_names_G = len(unique_street_names_from_G)
     #print("Total number of streets",count_unique_names_G)
     return count_unique_names_G
+
+#def display_names(graph):
+    
+#    unique_street_names_from_G = set()
+
+# Iterate over all edges in the graph, retrieving the attribute data for each edge
+#    for _, _, data in graph.edges(data=True):
+#        name_entry = normalize_street_name(data.get('name'))
+    
+#    # Check if the 'name' attribute exists
+#        if name_entry is not None:
+#            print(name_entry)
+#            if isinstance(name_entry, list):
+#                # If the value is a list (multiple names), add all individual names to the set
+#                for name in name_entry:
+#                    unique_street_names_from_G.add(name)
+#            elif isinstance(name_entry, str):
+#            # If the value is a single string, add it to the set
+#                unique_street_names_from_G.add(name_entry)
+#            print()
+
+# The count of unique street names is the length of the final set
+#    count_unique_names_G = len(unique_street_names_from_G)
+    #print("Total number of streets",count_unique_names_G)
+#    return count_unique_names_G
 
 def get_final_stats(user, list_edges, graph_dict, list_districts, stats, date):
     stats_file = f"stats/{user}/stats-{user}_{date}.csv"
@@ -275,6 +301,9 @@ def get_final_stats(user, list_edges, graph_dict, list_districts, stats, date):
         for district in list_districts:
             number_of_mapped_streets.append(get_number_of_mapped_streets(list_edges[user][district]))
             total_number_of_streets.append(get_number_of_streets(graph_dict[district]))
+#            print("names")
+#            display_names(graph_dict[district])
+#            print(user,district)
             number_of_mapped_segments.append(len(list_edges[user][district]))
             total_number_of_segments.append(stats[district]["m"])
             mapped_kms.append(sum(edge[2] for edge in list_edges[user][district])/1000)
@@ -586,8 +615,14 @@ def normalize_street_name(name):
             .lower()
             .replace("d'", "")
             .replace("l'", "")            
-            .replace(" de ", " ")
+            .replace(" de ", " ")            
             .replace(" del ", " ")
+            .replace(" dels ", " ")
+            .replace(" el ", " ")
+            .replace(" la ", " ")
+            .replace(" los ", " ")
+            .replace("(", " ")
+            .replace(")", " ")
             .replace("*","")
         )
     elif isinstance(name, list):
@@ -600,6 +635,12 @@ def normalize_street_name(name):
             .replace("l'", "")            
             .replace(" de ", " ")
             .replace(" del ", " ")
+            .replace(" dels ", " ")
+            .replace(" el ", " ")
+            .replace(" la ", " ")
+            .replace(" los ", " ")
+            .replace("(", " ")
+            .replace(")", " ")
             .replace("*","")
             for n in name
         ]
