@@ -127,7 +127,7 @@ function render() {
 
   // 4. Stats and Timeseries
   const tableStatsElem = document.getElementById("table_stats");
- if (currentUser != "Comparison") {
+ //if (currentUser != "Comparison") {
   tableStatsElem.style.display = "block";
   if (tableStatsElem) {
     if (currentDistrict == "Barcelona") {
@@ -136,9 +136,9 @@ function render() {
       tableStatsElem.src = `stats/${currentUser}/stats-${currentDistrict}-${currentUser}.png`;
     }
   }
- } else {
-   tableStatsElem.style.display = "none";
- }
+ //} else {
+ //  tableStatsElem.style.display = "none";
+ //}
 
   const timeseriesElem = document.getElementById("timeseries");
   if (timeseriesElem) {

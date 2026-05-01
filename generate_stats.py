@@ -94,6 +94,8 @@ edge_colors = {user: {} for user in users}
 edge_widths = {user: {} for user in users}
 street_names_mapped = {user: {} for user in users}
 missing_streets = {user: {} for user in users}
+all_user_snapshots = {user: {} for user in users}
+user_last_days = {} 
 
 for user in users:
     coords, _, dates_gpx = get_coords_dates_gpx(user)
@@ -103,7 +105,7 @@ for user in users:
        for district in args.generate_missing_streets_district:
         if args.generate_missing_streets_user:
             if user in args.generate_missing_streets_user:
-                street_names_mapped[district] = { normalize_street_name(edge[1]) for edge in full_history_edges[district] }
+                street_names_mapped[district] = { edge[1] for edge in full_history_edges[district] }
                 print(f"user-{user},district-{district}")
              #   print(street_names_mapped[district])
                 missing_streets[district,user] = get_missing_streets(street_names_mapped[district],graph_dict[district])
@@ -112,53 +114,55 @@ for user in users:
                 continue
     
     last_day = unique_days[-1]
+    user_last_days[user] = last_day
     for current_date in unique_days:
         print(f"Processing {user} for {current_date}")
-        
+        stats_check_file = f"stats/{user}/stats-{user}.png"
+        #if current_date != last_day and not os.path.exists(stats_check_file):
+
         list_edges_snapshot = {}
         for district in list_districts:
-            list_edges_snapshot[district] = [
-                e for e in full_history_edges[district] 
-                if e[3].split('T')[0] <= current_date
-            ]
-
-            colors, widths = highlight_edges(
-                graph_dict[district], {user: list_edges_snapshot}, user, color, district, current_date
-            )
-            edge_colors[user][district] = colors
-            edge_widths[user][district] = widths
-
-        stats_check_file = f"stats/{user}/stats-{user}.png"
+                list_edges_snapshot[district] = [
+                    e for e in full_history_edges[district] 
+                    if e[3].split('T')[0] <= current_date
+                ]
+                colors, widths = highlight_edges(
+                    graph_dict[district], {user: list_edges_snapshot}, user, color, district, current_date
+                )
+                edge_colors[user][district] = colors
+                edge_widths[user][district] = widths
+        if current_date == last_day:
+            all_user_snapshots[user] = {dist: list(edges) for dist, edges in list_edges_snapshot.items()}        
         #if not os.path.exists(stats_check_file):
         for district in list_districts:
-            plot_mapped(
-                graph_dict[district],
-                user,
-                district,
-                edge_colors[user][district],
-                edge_widths[user][district],
-                color,
-                current_date,
-                last_day
-            )
+                plot_mapped(
+                    graph_dict[district],
+                    user,
+                    district,
+                    edge_colors[user][district],
+                    edge_widths[user][district],
+                    color,
+                    current_date,
+                    last_day
+                )
 
         
         final_table, previous_table = get_final_stats(
-                user, {user: list_edges_snapshot}, graph_dict, list_districts, stats, current_date
+                    user, {user: list_edges_snapshot}, graph_dict, list_districts, stats, current_date
         )
         
         styled_stats = plot_stats(final_table, previous_table, list_districts)
         if current_date == last_day:
-            dataframe_to_png(styled_stats.data, stats_check_file, list_districts)
-            for district in list_districts:
-                table_stats_district = filter_df_for_district(styled_stats.data, list_districts, district)
-                print("plotting stats",current_date,district,user)
-                dataframe_to_png(
-                    table_stats_district,
-                    f"stats/{user}/stats-{district}-{user}.png",
-                    [district]
-                )
-                create_gif(district, user)
+                dataframe_to_png(styled_stats.data, stats_check_file, list_districts)
+                for district in list_districts:
+                    table_stats_district = filter_df_for_district(styled_stats.data, list_districts, district)
+                    print("plotting stats",current_date,district,user)
+                    dataframe_to_png(
+                        table_stats_district,
+                        f"stats/{user}/stats-{district}-{user}.png",
+                        [district]
+                 )
+                    create_gif(district, user)
         if user != "Comparison":
             for district in list_districts:
                 plot_district_user_bars(
@@ -202,8 +206,8 @@ full_df = pd.concat(data_list)
 
 for district in list_districts:
     dist_info = full_df[full_df['districts'] == district].iloc[0]
-    total_str = dist_info['total number of streets']
-    total_seg = dist_info['total number of segments']
+    total_str = dist_info['total streets']
+    total_seg = dist_info['total segments']
 
     # --- Individual plots for each user (2 timeseries) ---
     for user in users:
@@ -215,8 +219,8 @@ for district in list_districts:
         fig, ax1 = plt.subplots(figsize=(10, 6))
         ax2 = ax1.twinx()
         
-        l1 = ax1.plot(data['date'], data['number of mapped streets'], color='tab:blue', marker='o', label='Streets')
-        l2 = ax2.plot(data['date'], data['number of mapped segments'], color='tab:red', marker='s', label='Segments')
+        l1 = ax1.plot(data['date'], data['mapped streets'], color='tab:blue', marker='o', label='Streets')
+        l2 = ax2.plot(data['date'], data['mapped segments'], color='tab:red', marker='s', label='Segments')
         
         ax1.set_xlabel('Date')
         ax1.set_ylabel(f'Mapped Street (Total: {total_str})', color='tab:blue')
@@ -247,16 +251,16 @@ for district in list_districts:
             print("empty data",user)
             continue
         
-        l_street = ax1.plot(data['date'], data['number of mapped streets'], color=user_colors[user], 
+        l_street = ax1.plot(data['date'], data['mapped streets'], color=user_colors[user], 
                             linestyle='-', marker='o', label=f'{user} Streets')
-        l_segment = ax2.plot(data['date'], data['number of mapped segments'], color=user_colors[user], 
+        l_segment = ax2.plot(data['date'], data['mapped segments'], color=user_colors[user], 
                                 linestyle='--', marker='x', label=f'{user} Segments')
         
         all_lines.extend(l_street + l_segment)
         
     ax1.set_xlabel('Date')
-    ax1.set_ylabel(f'Number of mapped streets (Total: {total_str})')
-    ax2.set_ylabel(f'Number of mapped segments (Total: {total_seg})')
+    ax1.set_ylabel(f'Mapped streets (Total: {total_str})')
+    ax2.set_ylabel(f'Mapped segments (Total: {total_seg})')
     plt.title(f"{district.replace('_', ' ')} - Comparison")
     
     # Format X-axis
@@ -304,3 +308,18 @@ dates = {
 
 with open("dates.json", "w") as f:
     json.dump(dates, f, indent=2)
+
+# Create independent containers for the final calculation
+pa_data = {"PA": all_user_snapshots["PA"]}
+hubert_data = {"Hubert": all_user_snapshots["Hubert"]}
+df_pa, _ = get_final_stats("PA", pa_data, graph_dict, list_districts, stats, user_last_days["PA"])
+df_h, _ = get_final_stats("Hubert", hubert_data, graph_dict, list_districts, stats, user_last_days["Hubert"])
+plot_user_comparison_table(df_pa, df_h, list_districts, "stats/Comparison/stats-Comparison.png")
+for district in list_districts:
+    df_pa_dist = filter_df_for_district(df_pa, list_districts, district)
+    df_h_dist = filter_df_for_district(df_h, list_districts, district)
+    
+    print(f"Plotting comparison stats for {district}")
+    
+    dist_output_path = f"stats/Comparison/stats-{district}-Comparison.png"
+    plot_user_comparison_table(df_pa_dist, df_h_dist, [district], dist_output_path)

@@ -105,16 +105,17 @@ def get_list_edges(graph, coords_gpx, dates_gpx, district, user, start=None):
 
             edge_attributes = gdf_edges.loc[(u, v, k)]
             if type(edge_attributes.get('name')) == str:  
-                street_name = edge_attributes.get('name')
+                street_name = normalize_street_name(edge_attributes.get('name'))
             else:
                 try:
-                    street_name = edge_attributes.get('name')[0]
+                    street_name = normalize_street_name(edge_attributes.get('name')[0])
                 except:
-                    street_name = "Unkwown"
+                    street_name = "unkwown"
             length_edge = float(edge_attributes.get('length'))
             edge_key = ((u, v, k), street_name, length_edge)
 
-            if edge_key not in {e[:3] for e in list_edges}:
+#            if edge_key not in {e[:3] for e in list_edges}:
+            if edge_key[0] not in {e[0] for e in list_edges}:
                 list_edges.append((*edge_key, edge_date.isoformat()))
                 f.write(f"{(*edge_key, edge_date.isoformat())}\n")
     
@@ -219,7 +220,8 @@ def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, dat
                 pass 
 
 def get_number_of_mapped_streets(list_edges):
-    mapped_street_names = [edge_data[1] for edge_data in list_edges]
+    mapped_street_names = [normalize_street_name(edge_data[1]) for edge_data in list_edges]
+   # print("final number of mapped streets",set(mapped_street_names))
     return len(set(mapped_street_names))
 
 def get_number_of_streets(graph):
@@ -235,8 +237,10 @@ def get_number_of_streets(graph):
             
             if isinstance(name_entry, list):
                 # If the value is a list (multiple names), add all individual names to the set
-                for name in name_entry:
-                    unique_street_names_from_G.add(name)
+#                for name in name_entry:
+#                    unique_street_names_from_G.add(name_entry)
+#               for name in name_entry:
+                unique_street_names_from_G.add(name_entry[0])
             elif isinstance(name_entry, str):
             # If the value is a single string, add it to the set
                 unique_street_names_from_G.add(name_entry)
@@ -244,8 +248,9 @@ def get_number_of_streets(graph):
 
 # The count of unique street names is the length of the final set
     count_unique_names_G = len(unique_street_names_from_G)
-    #print("Total number of streets",count_unique_names_G)
+    print("streets in final stats",unique_street_names_from_G)
     return count_unique_names_G
+
 
 #def display_names(graph):
     
@@ -299,7 +304,11 @@ def get_final_stats(user, list_edges, graph_dict, list_districts, stats, date):
         total_street_length = []
 
         for district in list_districts:
+            print("district",district)
             number_of_mapped_streets.append(get_number_of_mapped_streets(list_edges[user][district]))
+            print("district",district)
+            if district == "Eixample" and user == "PA":
+                print("in final stats ", get_number_of_streets(graph_dict[district]))
             total_number_of_streets.append(get_number_of_streets(graph_dict[district]))
 #            print("names")
 #            display_names(graph_dict[district])
@@ -311,11 +320,11 @@ def get_final_stats(user, list_edges, graph_dict, list_districts, stats, date):
 
         df = pd.DataFrame({
             "districts": list_districts,
-            "number of mapped streets": number_of_mapped_streets,
-            "total number of streets": total_number_of_streets,
+            "mapped streets": number_of_mapped_streets,
+            "total streets": total_number_of_streets,
             "percentage street": np.array(number_of_mapped_streets)/np.array(total_number_of_streets)*100,
-            "number of mapped segments ": number_of_mapped_segments,
-            "total number of segments" : total_number_of_segments, 
+            "mapped segments": number_of_mapped_segments,
+            "total segments" : total_number_of_segments, 
             "percentage segments": np.array(number_of_mapped_segments)/np.array(total_number_of_segments)*100,
             "mapped kms": mapped_kms,
             "total street length": total_street_length,
@@ -401,8 +410,19 @@ def dataframe_to_png(df, filename, list_districts):
             cell.get_text().set_ha("left")
 
         # Diff columns
-        if "diff" in df_display.columns[col] and row > 0:
-            cell.set_text_props(color="green", weight="bold")
+        cell_text = cell.get_text().get_text()
+        if "diff" in df_display.columns[col]:
+            try:
+                num_val = float(cell_text.replace('%', '').strip())
+                if num_val >= 0:
+                    cell.set_text_props(color="green", weight="bold")
+                else:
+            # This handles <= 0
+                    cell.set_text_props(color="blue", weight="bold")
+            except ValueError:
+        # This handles the Header row or non-numeric text
+        # Usually, headers are at row index 0
+                pass
     plt.tight_layout()
     plt.savefig(filename, dpi=200, bbox_inches="tight")
     plt.close()
@@ -587,22 +607,25 @@ def export_snapped_gpx(graph, user, district):
     
     print(f"Point-snapped GPX saved: {output_path}")
 
+    
 def get_missing_streets(mapped_streets,full_graph):
         # G is your graph
     street_names_full_graph = []
 
     for u, v, key, data in full_graph.edges(keys=True, data=True):
         name = normalize_street_name(data.get("name"))
-        #print(name)
-        if name and name != "unkown":
+#        if name and name != "unkown":
+        if name:
             street_names_full_graph.append(name)
 
     unique_street_names_full_graph = set()
     for name in street_names_full_graph:
         if isinstance(name, list):
-            unique_street_names_full_graph.update(name)
-        else:
+            unique_street_names_full_graph.add(name[0])
+        elif isinstance(name, str):
             unique_street_names_full_graph.add(name)
+    print("unique",unique_street_names_full_graph)
+
 
     return list(unique_street_names_full_graph - mapped_streets)
 
@@ -614,13 +637,15 @@ def normalize_street_name(name):
             .replace("  "," ")
             .lower()
             .replace("d'", "")
+            .replace("-", " ")
             .replace("l'", "")            
             .replace(" de ", " ")            
             .replace(" del ", " ")
             .replace(" dels ", " ")
             .replace(" el ", " ")
             .replace(" la ", " ")
-            .replace(" los ", " ")
+            .replace(" los ", " ")            
+            .replace("les", " ")
             .replace("(", " ")
             .replace(")", " ")
             .replace("*","")
@@ -632,6 +657,7 @@ def normalize_street_name(name):
             .replace(" "," ")
             .lower()
             .replace("d'", "")
+            .replace("-", " ")
             .replace("l'", "")            
             .replace(" de ", " ")
             .replace(" del ", " ")
@@ -639,8 +665,28 @@ def normalize_street_name(name):
             .replace(" el ", " ")
             .replace(" la ", " ")
             .replace(" los ", " ")
+            .replace("les", " ")
             .replace("(", " ")
             .replace(")", " ")
             .replace("*","")
             for n in name
         ]
+def plot_user_comparison_table(df_pa, df_hubert, list_districts, filename):
+    df_comp = pd.merge(df_pa, df_hubert, on="districts", suffixes=('_PA', '_H'))
+    base_cols = [c for c in df_pa.columns if c != "districts" and not c.startswith("total")]
+    final_data = {"districts": list_districts}
+    display_cols = ["districts"]
+    
+    for col in base_cols:
+        col_pa = f"{col}_PA"
+        col_h = f"{col}_H"
+        col_diff = f"diff {col}"
+        
+        final_data[col_pa] = df_comp[col_pa]        
+        final_data[col_h] = df_comp[col_h]
+        final_data[col_diff] = (df_comp[col_pa] - df_comp[col_h])
+        
+        display_cols.extend([col_pa, col_h, col_diff])
+
+    df_display = pd.DataFrame(final_data)[display_cols]
+    dataframe_to_png(df_display, filename, list_districts)
