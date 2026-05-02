@@ -248,7 +248,7 @@ def get_number_of_streets(graph):
 
 # The count of unique street names is the length of the final set
     count_unique_names_G = len(unique_street_names_from_G)
-    print("streets in final stats",unique_street_names_from_G)
+ #   print("streets in final stats",unique_street_names_from_G)
     return count_unique_names_G
 
 
@@ -304,11 +304,7 @@ def get_final_stats(user, list_edges, graph_dict, list_districts, stats, date):
         total_street_length = []
 
         for district in list_districts:
-            print("district",district)
             number_of_mapped_streets.append(get_number_of_mapped_streets(list_edges[user][district]))
-            print("district",district)
-            if district == "Eixample" and user == "PA":
-                print("in final stats ", get_number_of_streets(graph_dict[district]))
             total_number_of_streets.append(get_number_of_streets(graph_dict[district]))
 #            print("names")
 #            display_names(graph_dict[district])
