@@ -163,8 +163,46 @@ def highlight_edges(graph,list_edges,user,color,district,date):
             edge_widths.append(0.5)
     return edge_colors, edge_widths
 
+def highlight_edges_passatges(graph,list_edges,user,color,district,date):
+    edge_date_map = {
+    data[0]: datetime.fromisoformat(data[3])
+    for data in list_edges[user][district]
+    }
+    date_limit = datetime.strptime(date, "%Y-%m-%d")
+    edge_colors = []
+    edge_widths = []
+    gdf_edges = ox.graph_to_gdfs(graph, nodes=False)
 
-def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, date,last_day):
+    for u, v, k in graph.edges(keys=True):
+        edge_id = (u, v, k)
+        edge_attributes = gdf_edges.loc[(u, v, k)]
+     #   print("passatges ",type(edge_attributes.get('name')),edge_attributes.get('name'))    
+        is_passatge = False
+        name_normalized = normalize_street_name(edge_attributes.get('name'))
+        if isinstance(name_normalized, list):
+            is_passatge = any("passatge" in n for n in name_normalized)
+        elif isinstance(name_normalized, str):
+            is_passatge = "passatge" in name_normalized
+
+        if is_passatge:
+            if edge_id in edge_date_map:
+                    if edge_date_map[edge_id] >= date_limit:
+                        edge_colors.append("green")
+                    else:
+                        edge_colors.append(color)
+                    edge_widths.append(2)
+                  #  print("mapped passatge",edge_attributes.get('name'))
+            else:
+                    edge_colors.append("black")
+                    edge_widths.append(1)
+                  #  print("not mapped passatge",edge_attributes.get('name'))
+        else:
+                edge_colors.append("grey")
+                edge_widths.append(0.5)
+         #       print("not passatge",edge_attributes.get('name'))
+    return edge_colors, edge_widths, 
+
+def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, date,last_day,passatges=False):
     os.makedirs("plots/"+user, exist_ok=True)
     os.makedirs("stats/"+user, exist_ok=True)
     if user == "Comparison":
@@ -173,10 +211,14 @@ def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, dat
         latest_plot_with_bg = f"plots/{user}/{district.replace(' ', '_')}-bg-{user}.png"
 
     else:
-        plot_name = f"plots/{user}/{district.replace(' ', '_')}-{user}.{date}.png"
-        latest_plot = f"plots/{user}/{district.replace(' ', '_')}-{user}.png"
-        latest_plot_with_bg = f"plots/{user}/{district.replace(' ', '_')}-bg-{user}.png"
-
+        if not passatges:
+            plot_name = f"plots/{user}/{district.replace(' ', '_')}-{user}.{date}.png"
+            latest_plot = f"plots/{user}/{district.replace(' ', '_')}-{user}.png"
+            latest_plot_with_bg = f"plots/{user}/{district.replace(' ', '_')}-bg-{user}.png"
+        else:
+            plot_name = f"plots/{user}/passatges-{district.replace(' ', '_')}-{user}.{date}.png"
+            latest_plot = f"plots/{user}/passatges-{district.replace(' ', '_')}-{user}.png"
+            latest_plot_with_bg = f"plots/{user}/passatges-{district.replace(' ', '_')}-bg-{user}.png"
     if user == "Comparison" or ( (user != "Comparison") and (not os.path.isfile(plot_name) ) ):
         print(f"Plotting {district} for {date}")
         
@@ -193,7 +235,7 @@ def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, dat
         fig, ax = ox.plot.plot_graph(
             graph_dict,
             edge_color=edge_colors,
-            edge_linewidth=0.5,
+            edge_linewidth=edge_widths,
             show=False,
             close=False,
             node_size=0,
@@ -248,7 +290,7 @@ def get_number_of_streets(graph):
 
 # The count of unique street names is the length of the final set
     count_unique_names_G = len(unique_street_names_from_G)
-    print("streets in final stats",unique_street_names_from_G)
+ #   print("streets in final stats",unique_street_names_from_G)
     return count_unique_names_G
 
 

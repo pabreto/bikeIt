@@ -92,9 +92,13 @@ for district in list_districts:
 
 edge_colors = {user: {} for user in users}
 edge_widths = {user: {} for user in users}
+edge_passatges_colors = {user: {} for user in users}
+edge_passatges_widths = {user: {} for user in users}
 street_names_mapped = {user: {} for user in users}
 missing_streets = {user: {} for user in users}
 all_user_snapshots = {user: {} for user in users}
+number_of_mapped_passatges = {user: {} for user in users}
+number_of_passatges = {user: {} for user in users}
 user_last_days = {} 
 
 for user in users:
@@ -130,6 +134,16 @@ for user in users:
                     graph_dict[district], {user: list_edges_snapshot}, user, color, district, current_date
                 )
                 edge_colors[user][district] = colors
+
+                colors_passatges, widths_district = highlight_edges_passatges(
+                    graph_dict[district], {user: list_edges_snapshot}, user, color, district, current_date
+                )
+                edge_passatges_colors[user][district] = colors_passatges
+                number_of_mapped_passatges[user][district] = colors_passatges.count("green")+colors_passatges.count("red")
+                number_of_passatges[user][district] = colors_passatges.count("black")
+                print("user",user,"district",district,"passatges",number_of_mapped_passatges[user][district],"/",number_of_passatges[user][district])
+                edge_passatges_widths[user][district] = widths_district
+
                 edge_widths[user][district] = widths
         if current_date == last_day:
             all_user_snapshots[user] = {dist: list(edges) for dist, edges in list_edges_snapshot.items()}        
@@ -144,6 +158,17 @@ for user in users:
                     color,
                     current_date,
                     last_day
+                )
+                plot_mapped(
+                    graph_dict[district],
+                    user,
+                    district,
+                    edge_passatges_colors[user][district],
+                    edge_passatges_widths[user][district],
+                    color,
+                    current_date,
+                    last_day,
+                    passatges=True
                 )
 
         
