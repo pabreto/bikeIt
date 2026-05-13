@@ -174,7 +174,7 @@ def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, dat
     else:
         plot_name = f"plots/{user}/{district.replace(' ', '_')}-{user}.{date}.png"
         latest_plot = f"plots/{user}/{district.replace(' ', '_')}-{user}.png"
-        latest_plot_with_bg = f"plots/{user}/{district.replace(' ', '_')}-bg-{user}.png"
+        # latest_plot_with_bg = f"plots/{user}/{district.replace(' ', '_')}-bg-{user}.png"
 
     if user == "Comparison" or ( (user != "Comparison") and (not os.path.isfile(plot_name) ) ):
         print(f"Plotting {district} for {date}")
@@ -189,10 +189,27 @@ def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, dat
         # boundary = boundary_gdf.to_crs(G_proj.crs).iloc[0:1]
         
         # 3. Plot the graph
+        lw = np.zeros_like(edge_colors)
+        # print(edge_colors)
+        edge_colors = np.asarray(edge_colors)
+
+        lw = np.zeros(len(edge_colors))
+
+        if 'grey' in edge_colors:
+            lw[edge_colors == 'grey'] = 0.5
+
+        if 'green' in edge_colors:
+            lw[edge_colors == 'green'] = 1.5
+
+        if 'red' in edge_colors:
+            lw[edge_colors == 'red'] = 0.5
+        
+        lw = lw.tolist()
+
         fig, ax = ox.plot.plot_graph(
             graph_dict,
             edge_color=edge_colors,
-            edge_linewidth=0.5,
+            edge_linewidth=lw,
             show=False,
             close=False,
             node_size=0,
@@ -209,7 +226,7 @@ def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, dat
             ]
             ax.legend(handles=legend_elements, loc='lower right')
     
-        ax.set_title(f"{district} - {user} ({date})")
+        # ax.set_title(f"{district} - {user} ({date})")
         fig.savefig(plot_name, dpi=250, bbox_inches='tight')
         plt.close(fig)
     if (date == last_day):

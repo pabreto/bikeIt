@@ -7,6 +7,7 @@ let currentUser = defaultUser;
 let currentDistrict = defaultDistrict;
 let currentDate = null;
 let availableDates = {};
+let overlayVisible = false;
 
 async function loadDates() {
   try {
@@ -62,6 +63,9 @@ function render() {
 
   // 2. Main Picture
   const mainPicElem = document.getElementById("main_pic");
+  const overlayPic = document.getElementById("overlay_pic");
+  const overlayPicNames = document.getElementById("overlay_pic_names");
+  const overlayBtn = document.getElementById("overlayToggle");
   const barPicElem = document.getElementById("bar_pic");
   const slider = document.getElementById("dateSlider");
 
@@ -74,7 +78,7 @@ function render() {
 
     // Add "default" option
     const defaultBtn = document.createElement("button");
-    defaultBtn.textContent = "Latest date";
+    defaultBtn.textContent = "Main";
     if (!currentDate) defaultBtn.classList.add("active");
     defaultBtn.onclick = () => selectDate(null);
     console.log("DATES:", availableDates);
@@ -89,7 +93,6 @@ function render() {
       slider.appendChild(btn);
     });
   }
-
   if (currentUser !== "Comparison") {
     if (barPicElem) {
       barPicElem.style.display = "block";
@@ -147,6 +150,24 @@ function render() {
     } else {
       timeseriesElem.src = `plots/${currentUser}/timeseries/${currentDistrict}-${currentUser}.png`;
     }
+  }
+
+  // Overlay logic
+  if (currentDistrict === "Barcelona") {
+    overlayBtn.style.display = "block";
+
+    overlayBtn.onclick = () => {
+      overlayVisible = !overlayVisible;
+      overlayPic.style.display = overlayVisible ? "block" : "none";
+      overlayPicNames.style.display = overlayVisible ? "block" : "none";
+    };
+
+    overlayPic.style.display = overlayVisible ? "block" : "none";
+  } else {
+    overlayBtn.style.display = "none";
+    overlayPic.style.display = "none";
+    overlayPicNames.style.display = "none";
+    overlayVisible = false;
   }
 
   // 5. Header District Buttons
