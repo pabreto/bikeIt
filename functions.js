@@ -8,6 +8,18 @@ let currentDistrict = defaultDistrict;
 let currentDate = null;
 let availableDates = {};
 
+let container;
+let img;
+
+let scale = 1;
+let baseScale = 1;
+let posX = 0;
+let posY = 0;
+
+let isDragging = false;
+let startX = 0;
+let startY = 0;
+
 async function loadDates() {
   try {
     const res = await fetch("dates.json");
@@ -18,12 +30,40 @@ async function loadDates() {
   }
 }
 
+function fitImageToContainer() {
+  if (!img || !container) return;
+
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
+
+  const iw = img.naturalWidth;
+  const ih = img.naturalHeight;
+
+  baseScale = Math.min(cw / iw, ch / ih);
+
+  scale = 1;   // IMPORTANT: reset zoom level (not pixel scale)
+  posX = 0;
+  posY = 0;
+
+  applyTransform();
+}
+
+function resetView() {
+  scale = 1;
+  posX = 0;
+  posY = 0;
+
+  applyTransform();
+}
+
 function navigate(user) {
-  updateURL(user, currentDistrict, currentDate);
+  currentDate = null; // reset to latest
+  updateURL(user, currentDistrict);
 }
 
 function selectDistrict(district) {
-  updateURL(currentUser, district, currentDate);
+  currentDate = null; // reset to latest
+  updateURL(currentUser, district);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -51,108 +91,202 @@ function readURL() {
   currentDate = parts[2] || null;
 }
 
+function attachZoomPan() {
+
+  // ZOOM (scroll)
+  container.addEventListener("wheel", (e) => {
+    e.preventDefault();
+
+    const zoomIntensity = 0.1;
+    const delta = e.deltaY < 0 ? 1 : -1;
+
+    scale = Math.min(6, Math.max(0.2, scale + delta * zoomIntensity));
+
+    applyTransform();
+  }, { passive: false });
+
+  // DRAG START
+  container.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    startX = e.clientX - posX;
+    startY = e.clientY - posY;
+  });
+
+  // DRAG MOVE
+  window.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+
+    posX = e.clientX - startX;
+    posY = e.clientY - startY;
+
+    applyTransform();
+  });
+
+  // DRAG END
+  window.addEventListener("mouseup", () => {
+    isDragging = false;
+  });
+
+}
+
+function applyTransform() {
+  if (!img) return;
+
+  img.style.transform = `
+    translate(-50%, -50%)
+    translate(${posX}px, ${posY}px)
+    scale(${baseScale * scale})
+  `;
+}
+
+/* ---------------- RENDER ---------------- */
+
 function render() {
   readURL();
 
-  // 1. Highlight User Buttons
   const userButtons = document.querySelectorAll(".user-nav button");
+  const sliderContainer = document.querySelector(".date-slider-container");
+
   userButtons.forEach(btn => {
     btn.classList.toggle("active", btn.textContent.trim() === currentUser);
   });
 
-  // 2. Main Picture
   const mainPicElem = document.getElementById("main_pic");
   const barPicElem = document.getElementById("bar_pic");
+
+  /* reset zoom ONLY when image changes */
+  if (mainPicElem) {
+    mainPicElem.onload = () => {
+      fitImageToContainer();
+    };
+
+    if (currentDate) {
+      mainPicElem.src =
+        `plots/${currentUser}/${currentDistrict}-${currentUser}.${currentDate}.png`;
+    } else {
+      mainPicElem.src =
+        `plots/${currentUser}/${currentDistrict}-${currentUser}.png`;
+    }
+  }
+
   const slider = document.getElementById("dateSlider");
+  const label = document.getElementById("dateLabel");
+  const ticks = document.getElementById("dateTicks");
 
   if (slider) {
-    slider.innerHTML = "";
 
     const dates =
-    (availableDates[currentDistrict] &&
-    availableDates[currentDistrict][currentUser]) || [];
+      (availableDates[currentDistrict] &&
+       availableDates[currentDistrict][currentUser]) || [];
 
-    // Add "default" option
-    const defaultBtn = document.createElement("button");
-    defaultBtn.textContent = "Latest date";
-    if (!currentDate) defaultBtn.classList.add("active");
-    defaultBtn.onclick = () => selectDate(null);
-    console.log("DATES:", availableDates);
-    console.log("CURRENT:", currentDistrict, currentUser);
-    slider.appendChild(defaultBtn);
+    const allDates = [...dates, null];
 
-    dates.forEach(date => {
-      const btn = document.createElement("button");
-      btn.textContent = date;
-      if (date === currentDate) btn.classList.add("active");
-      btn.onclick = () => selectDate(date);
-      slider.appendChild(btn);
-    });
+    slider.min = 0;
+    slider.max = allDates.length - 1;
+
+    const currentIndex =
+      currentDate
+        ? allDates.indexOf(currentDate)
+        : allDates.length - 1;
+
+    slider.value = currentIndex;
+
+    label.textContent = currentDate || "Latest";
+
+    slider.oninput = (e) => {
+      const idx = parseInt(e.target.value);
+      const selectedDate = allDates[idx];
+      label.textContent = selectedDate || "Latest";
+    };
+
+    slider.onchange = (e) => {
+      const idx = parseInt(e.target.value);
+      const selectedDate = allDates[idx];
+      selectDate(selectedDate);
+    };
+
+    ticks.innerHTML = "";
+
+    const numTicks = 5;
+
+    for (let i = 0; i < numTicks; i++) {
+      const idx = Math.round(
+        i * (allDates.length - 1) / (numTicks - 1)
+      );
+
+      const tick = document.createElement("span");
+      tick.textContent = allDates[idx] || "Latest";
+      ticks.appendChild(tick);
+    }
   }
 
-  if (currentUser !== "Comparison") {
-    if (barPicElem) {
-      barPicElem.style.display = "block";
-      barPicElem.src = `stats/${currentUser}/stats_bars_${currentDistrict}_${currentUser}.png`;
-    }
-    if (mainPicElem) {
-      if (currentDate) {
-        // use dated image
-        mainPicElem.src = `plots/${currentUser}/${currentDistrict}-${currentUser}.${currentDate}.png`;
-      } else {
-        // default image
-        mainPicElem.src = `plots/${currentUser}/${currentDistrict}-${currentUser}.png`;
-      }
-    }
-  } else {
-    // Hide the top-section side bar when in Comparison mode
-    if (barPicElem) barPicElem.style.display = "none";
-    if (mainPicElem) mainPicElem.src = `plots/${currentUser}/${currentDistrict}-${currentUser}.png`;
+  /* BAR IMAGE */
+  if (barPicElem) {
+    barPicElem.style.display = currentUser === "Comparison" ? "none" : "block";
+    barPicElem.src =
+      `stats/${currentUser}/stats_bars_${currentDistrict}_${currentUser}.png`;
   }
 
-  // 3. Comparison Section Logic
+  /* COMPARISON */
   const compSection = document.getElementById("comparison_section");
-  const compLeft = document.getElementById("comp_left");
-  const compRight = document.getElementById("comp_right");
 
   if (currentUser === "Comparison") {
     compSection.style.display = "flex";
-    document.getElementById("bar_pa").src = `stats/PA/stats_bars_${currentDistrict}_PA.png`;
-    document.getElementById("bar_hubert").src = `stats/Hubert/stats_bars_${currentDistrict}_Hubert.png`;
-    compLeft.src = `plots/PA/${currentDistrict}-PA.png`;
-    compRight.src = `plots/Hubert/${currentDistrict}-Hubert.png`;
+
+    document.getElementById("bar_pa").src =
+      `stats/PA/stats_bars_${currentDistrict}_PA.png`;
+
+    document.getElementById("bar_hubert").src =
+      `stats/Hubert/stats_bars_${currentDistrict}_Hubert.png`;
+
+    document.getElementById("comp_left").src =
+      `plots/PA/${currentDistrict}-PA.png`;
+
+    document.getElementById("comp_right").src =
+      `plots/Hubert/${currentDistrict}-Hubert.png`;
   } else {
     compSection.style.display = "none";
   }
 
-  // 4. Stats and Timeseries
+  /* SLIDER VISIBILITY */
+  if (sliderContainer) {
+    sliderContainer.style.display =
+      currentUser === "Comparison" ? "none" : "block";
+  }
+
+  /* STATS */
   const tableStatsElem = document.getElementById("table_stats");
- //if (currentUser != "Comparison") {
-  tableStatsElem.style.display = "block";
+
   if (tableStatsElem) {
-    if (currentDistrict == "Barcelona") {
+    tableStatsElem.style.display = "block";
+
+    if (currentDistrict === "Barcelona") {
       tableStatsElem.src = `stats/${currentUser}/stats-${currentUser}.png`;
     } else {
-      tableStatsElem.src = `stats/${currentUser}/stats-${currentDistrict}-${currentUser}.png`;
+      tableStatsElem.src =
+        `stats/${currentUser}/stats-${currentDistrict}-${currentUser}.png`;
     }
   }
- //} else {
- //  tableStatsElem.style.display = "none";
- //}
 
+  /* TIMESERIES */
   const timeseriesElem = document.getElementById("timeseries");
+
   if (timeseriesElem) {
     if (currentUser === "Comparison") {
-      timeseriesElem.src = `plots/${currentUser}/timeseries/${currentDistrict}.png`;
+      timeseriesElem.src =
+        `plots/${currentUser}/timeseries/${currentDistrict}.png`;
     } else {
-      timeseriesElem.src = `plots/${currentUser}/timeseries/${currentDistrict}-${currentUser}.png`;
+      timeseriesElem.src =
+        `plots/${currentUser}/timeseries/${currentDistrict}-${currentUser}.png`;
     }
   }
 
-  // 5. Header District Buttons
+  /* NAV */
   const nav = document.getElementById("districtNav");
+
   if (nav) {
     nav.innerHTML = "";
+
     districts.forEach(d => {
       const btn = document.createElement("button");
       btn.textContent = d.replace(/_/g, " ");
@@ -162,26 +296,40 @@ function render() {
     });
   }
 
-  // 6. Bottom Grid
+  /* GRID */
   const grid = document.getElementById("districtGrid");
+
   if (grid) {
     grid.innerHTML = "";
+
     districts.forEach(d => {
-      const img = document.createElement("img");
-      img.src = `plots/${currentUser}/${d}-${currentUser}.png`;
+      const imgEl = document.createElement("img");
+
+      imgEl.src =
+        `plots/${currentUser}/${d}-${currentUser}.png`;
+
       if (d === currentDistrict) {
-        img.style.outline = "5px solid #ff4444";
-        img.style.outlineOffset = "-5px";
+        imgEl.style.outline = "5px solid #ff4444";
+        imgEl.style.outlineOffset = "-5px";
       }
-      img.onclick = () => selectDistrict(d);
-      grid.appendChild(img);
+
+      imgEl.onclick = () => selectDistrict(d);
+
+      grid.appendChild(imgEl);
     });
   }
 }
 
 async function init() {
-  await loadDates();  // ⬅️ load JSON first
+  await loadDates();
+
+  container = document.getElementById("imageContainer");
+  img = document.getElementById("main_pic");
+
+  attachZoomPan();
   render();
 }
+
 window.addEventListener("load", init);
 window.addEventListener("hashchange", render);
+
