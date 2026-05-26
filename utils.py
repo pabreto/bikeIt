@@ -197,7 +197,7 @@ def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, dat
             show=False,
             close=False,
             node_size=0,
-            bgcolor="white"
+            bgcolor="white",
         )
 
 
@@ -210,7 +210,7 @@ def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, dat
             ]
             ax.legend(handles=legend_elements, loc='lower right')
     
-        ax.set_title(f"{district} - {user} ({date})")
+        #ax.set_title(f"{district} - {user} ({date})")
         fig.savefig(plot_name, dpi=250, bbox_inches='tight')
         plt.close(fig)
     if (date == last_day):
