@@ -93,7 +93,7 @@ header button:hover,
 /* MAIN IMAGE */
 
 .image-container {
-  width: 100%;
+  width: 80%;
   height: calc(100vh - 200px);
   max-height: 800px;
   min-height: 400px;
@@ -101,6 +101,7 @@ header button:hover,
   position: relative;
   cursor: grab;
   touch-action: none;
+  border: 1px solid rgba(128, 128, 128, 0.439);
 }
 
 .image-container:active {
@@ -234,3 +235,31 @@ header button:hover,
 .reset-view-btn:hover {
   background: rgba(0,0,0,0.8);
 }
+
+/* ===== DEBUG LAYOUT HELPERS ===== */
+/* 
+.top-section {
+  border: 3px solid red;
+}
+
+.main-container {
+  border: 3px solid blue;
+}
+
+.image-container {
+  border: 3px solid green;
+}
+
+.date-slider-container {
+  border: 2px dashed orange;
+}
+
+.comparison-container {
+  border: 3px solid purple;
+}
+
+.table_stats,
+.timeseries,
+.district-grid {
+  border: 3px solid gray;
+} */

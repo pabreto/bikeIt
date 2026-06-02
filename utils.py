@@ -6,7 +6,6 @@ import osmnx as ox
 import os
 import ast
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import textwrap
 from datetime import datetime
@@ -14,14 +13,15 @@ from PIL import Image
 import json
 from matplotlib.lines import Line2D
 import shutil
-import contextily as ctx
+# import contextily as ctx
 from unidecode import unidecode 
+matplotlib.use('Agg')
 
 
-def get_graph_stats(graph,district):
+def get_graph_stats(graph, district):
     stats_district = district+".json"
     if os.path.exists(stats_district):
-        print("Load stats from file ",district)
+        print("Load stats from file ", district)
         with open(stats_district, "r") as f:
             return json.load(f)
     else:
@@ -32,15 +32,16 @@ def get_graph_stats(graph,district):
         graph_area_m = nodes_proj.union_all().convex_hull.area
         stats = ox.stats.basic_stats(G_proj, area=graph_area_m, clean_int_tol=15)
         with open(stats_district, "w") as f:
-           json.dump(stats, f, indent=2)
-    
+            json.dump(stats, f, indent=2)
         return stats
 
-def save_last_read_gps_point(i,district,user):
-    os.makedirs("edges/"+user,exist_ok=True)
+
+def save_last_read_gps_point(i, district, user):
+    os.makedirs("edges/" + user, exist_ok=True)
     file_list_edges = "edges/last_gpx_point_"+district+"-"+user+".txt"
     with open(file_list_edges, "w") as f:
-           f.write(str(i))
+        f.write(str(i))
+
 
 def get_coords_date_gpx(user):
     file = glob.glob(f'segments/{user}/*.gpx')[0] 
@@ -52,8 +53,11 @@ def get_coords_date_gpx(user):
             if (user == 'hubert') & (s in [1, 6]):
                 continue
             for points in segment.points:
-                coords_gpx.append((points.latitude,points.longitude,points.time))
+                coords_gpx.append((points.latitude,
+                                   points.longitude,
+                                   points.time))
     return coords_gpx, points.time
+
 
 def get_coords_dates_gpx(user):
     file = glob.glob(f'segments/{user}/*.gpx')[0] 
@@ -66,17 +70,16 @@ def get_coords_dates_gpx(user):
             if (user == 'hubert') & (s in [1, 6]):
                 continue
             for points in segment.points:
-                coords_gpx.append((points.latitude,points.longitude))
+                coords_gpx.append((points.latitude, points.longitude))
                 dates_gpx.append(points.time.replace(tzinfo=None))
     return coords_gpx, points.time, dates_gpx
 
 
-
 def get_list_edges(graph, coords_gpx, dates_gpx, district, user, start=None):
-    os.makedirs("edges/"+user,exist_ok=True)
+    os.makedirs("edges/" + user, exist_ok=True)
     file_list_edges = "edges/"+user+"/list_edges_"+district+"-"+user+".txt"
     list_edges = []
-    
+
     if start and os.path.isfile(file_list_edges):
         print("starting from file",file_list_edges)
         with open(file_list_edges, "r") as f:
@@ -89,7 +92,7 @@ def get_list_edges(graph, coords_gpx, dates_gpx, district, user, start=None):
 
     idx_start = start if start is not None else 0
     to_process = coords_gpx[idx_start:]
-    
+
     if not to_process:
         return list_edges
 
@@ -109,7 +112,7 @@ def get_list_edges(graph, coords_gpx, dates_gpx, district, user, start=None):
             else:
                 try:
                     street_name = normalize_street_name(edge_attributes.get('name')[0])
-                except:
+                except Exception:
                     street_name = "unkwown"
             length_edge = float(edge_attributes.get('length'))
             edge_key = ((u, v, k), street_name, length_edge)
@@ -118,34 +121,40 @@ def get_list_edges(graph, coords_gpx, dates_gpx, district, user, start=None):
             if edge_key[0] not in {e[0] for e in list_edges}:
                 list_edges.append((*edge_key, edge_date.isoformat()))
                 f.write(f"{(*edge_key, edge_date.isoformat())}\n")
-    
+
     save_last_read_gps_point(get_coords_date_gpx(user)[0], district, user)
     return list_edges
 
-def load_last_gps_point(district,user):
+
+def load_last_gps_point(district, user):
     try:
-        file_list_edges = "edges/"+user+"/last_gpx_point_"+district+"-"+user+".txt" #bug with reading previous
+        file_list_edges = "edges/" + \
+            user+"/last_gpx_point_" + \
+            district+"-"+user+".txt"  # bug with reading previous
         with open(file_list_edges, "r") as f:
             return int(f.read())
-    except:
+    except Exception:
         return None
-    
 
-def generate_list_edges(graph_dict,user,list_districts):
-    list_edges_read={}
+
+def generate_list_edges(graph_dict, user, list_districts):
+    list_edges_read = {}
     for district in list_districts:
-        print("Generating list edges",district, user)
-        last_gps_point = load_last_gps_point(district,user)
-        coords,_,dates_gpx=get_coords_dates_gpx(user)
-        list_edges_read[district] = get_list_edges(graph_dict[district],coords,dates_gpx, district,user,last_gps_point)
+        print("Generating list edges", district, user)
+        last_gps_point = load_last_gps_point(district, user)
+        coords, _, dates_gpx = get_coords_dates_gpx(user)
+        list_edges_read[district] = get_list_edges(graph_dict[district],
+                                                   coords, dates_gpx,
+                                                   district, user,
+                                                   last_gps_point)
 
     return list_edges_read
 
-def highlight_edges(graph,list_edges,user,color,district,date):
+
+def highlight_edges(graph, list_edges, user, color, district, date):
     edge_date_map = {
-    data[0]: datetime.fromisoformat(data[3])
-    for data in list_edges[user][district]
-    }
+        data[0]: datetime.fromisoformat(data[3]) for
+        data in list_edges[user][district]}
     date_limit = datetime.strptime(date, "%Y-%m-%d")
     edge_colors = []
     edge_widths = []
@@ -175,15 +184,16 @@ def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, dat
     else:
         plot_name = f"plots/{user}/{district.replace(' ', '_')}-{user}.{date}.png"
         latest_plot = f"plots/{user}/{district.replace(' ', '_')}-{user}.png"
-        latest_plot_with_bg = f"plots/{user}/{district.replace(' ', '_')}-bg-{user}.png"
+        # latest_plot_with_bg = f"plots/{user}/{district.replace(' ', '_')}-bg-{user}.png"
 
-    if user == "Comparison" or ( (user != "Comparison") and (not os.path.isfile(plot_name) ) ):
+    if (user == "Comparison") | ((user != "Comparison") &
+                                 (not os.path.isfile(plot_name))):
         print(f"Plotting {district} for {date}")
-        
+
         # 1. Ensure the graph is projected to Web Mercator (EPSG:3857)
         # This is the standard for background tiles
         # G_proj = ox.project_graph(graph_dict, to_crs='EPSG:3857')
-        
+
         # # 2. Get District Boundary and project it to match the graph
         # # Added .iloc[0:1] to ensure we handle the geodataframe correctly
         # boundary_gdf = ox.geocode_to_gdf(district + ", Barcelona, Spain")
@@ -200,66 +210,69 @@ def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, dat
             bgcolor="white",
         )
 
-
-
         if user == "Comparison":
             legend_elements = [
                 Line2D([0], [0], color='red', lw=2, label='Both'),
                 Line2D([0], [0], color='blue', lw=2, label='Hubert only'),
-                Line2D([0], [0], color='green', lw=2, label='PA only'),
+                Line2D([0], [0], color='forestgreen', lw=2, label='PA only'),
             ]
             ax.legend(handles=legend_elements, loc='lower right')
-    
-        #ax.set_title(f"{district} - {user} ({date})")
+
         fig.savefig(plot_name, dpi=250, bbox_inches='tight')
         plt.close(fig)
     if (date == last_day):
-            try:
-                shutil.copy(plot_name,latest_plot)
-            except:
-                pass 
+        try:
+            shutil.copy(plot_name, latest_plot)
+        except Exception:
+            pass
+
 
 def get_number_of_mapped_streets(list_edges):
-    mapped_street_names = [normalize_street_name(edge_data[1]) for edge_data in list_edges]
-   # print("final number of mapped streets",set(mapped_street_names))
+    mapped_street_names = [normalize_street_name(edge_data[1]) for
+                           edge_data in list_edges]
+
     return len(set(mapped_street_names))
 
+
 def get_number_of_streets(graph):
-    
+
     unique_street_names_from_G = set()
 
-# Iterate over all edges in the graph, retrieving the attribute data for each edge
+# Iterate over all edges in the graph,
+# retrieving the attribute data for each edge
     for _, _, data in graph.edges(data=True):
         name_entry = normalize_street_name(data.get('name'))
-    
+
     # Check if the 'name' attribute exists
         if name_entry is not None:
-            
+
             if isinstance(name_entry, list):
-                # If the value is a list (multiple names), add all individual names to the set
-#                for name in name_entry:
-#                    unique_street_names_from_G.add(name_entry)
-#               for name in name_entry:
+                #   If the value is a list (multiple names),
+                #   add all individual names to the set
+                #   for name in name_entry:
+                #   unique_street_names_from_G.add(name_entry)
+                #   for name in name_entry:
                 unique_street_names_from_G.add(name_entry[0])
             elif isinstance(name_entry, str):
-            # If the value is a single string, add it to the set
+                # If the value is a single string, add it to the set
                 unique_street_names_from_G.add(name_entry)
-                
+
 
 # The count of unique street names is the length of the final set
     count_unique_names_G = len(unique_street_names_from_G)
- #   print("streets in final stats",unique_street_names_from_G)
+    # print("streets in final stats",unique_street_names_from_G)
     return count_unique_names_G
 
 
-#def display_names(graph):
-    
+# def display_names(graph):
+
 #    unique_street_names_from_G = set()
 
-# Iterate over all edges in the graph, retrieving the attribute data for each edge
+# Iterate over all edges in the graph, retrieving
+# the attribute data for each edge
 #    for _, _, data in graph.edges(data=True):
 #        name_entry = normalize_street_name(data.get('name'))
-    
+
 #    # Check if the 'name' attribute exists
 #        if name_entry is not None:
 #            print(name_entry)
