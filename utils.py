@@ -13,7 +13,6 @@ from PIL import Image
 import json
 from matplotlib.lines import Line2D
 import shutil
-# import contextily as ctx
 from unidecode import unidecode 
 matplotlib.use('Agg')
 

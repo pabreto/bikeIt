@@ -1,4 +1,3 @@
-# import geopandas as gpd
 import pandas as pd
 import glob
 # import gpxpy.gpx
@@ -9,7 +8,6 @@ import matplotlib.dates as mdates
 # from shapely.geometry import Point
 # import contextily as ctx
 # import matplotlib.animation as animation
-# import numpy as np
 from utils import (get_graph_stats, get_missing_streets,
                    get_coords_dates_gpx, generate_list_edges,
                    plot_mapped, highlight_edges, get_final_stats,

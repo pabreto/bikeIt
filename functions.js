@@ -284,6 +284,7 @@ function render() {
   /* NAV */
   const nav = document.getElementById("districtNav");
 
+
   if (nav) {
     nav.innerHTML = "";
 
