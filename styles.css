@@ -4,6 +4,7 @@ body {
 }
 
 /* 🔝 Header & Navigation */
+
 header {
   background: #333;
   text-align: center;
@@ -28,7 +29,8 @@ header button {
   transition: background 0.3s;
 }
 
-/* 🆕 District Navigation Row */
+/* District Navigation */
+
 .district-nav {
   background: #444;
   padding: 8px;
@@ -45,8 +47,9 @@ header button {
   background: #666;
 }
 
-/* 💡 Active States */
-header button.active, 
+/* Active Buttons */
+
+header button.active,
 .district-nav button.active {
   background: #ff4444 !important;
   font-weight: bold;
@@ -57,13 +60,7 @@ header button:hover,
   background: #777;
 }
 
-
-.side-bar {
-  width: 250px;          /* fixed column */
-  max-height: 90vh;
-  object-fit: contain;
-  flex-shrink: 0;
-}
+/* TOP SECTION */
 
 .top-section {
   display: flex;
@@ -74,7 +71,86 @@ header button:hover,
   padding: 20px;
 }
 
-comparison-container {
+/* LEFT SIDEBAR */
+
+.side-bar {
+  width: 250px;
+  max-height: 90vh;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* MAIN CONTENT */
+
+.main-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+/* MAIN IMAGE */
+
+.image-container {
+  width: 80%;
+  height: calc(100vh - 200px);
+  max-height: 800px;
+  min-height: 400px;
+  overflow: hidden;
+  position: relative;
+  cursor: grab;
+  touch-action: none;
+  border: 1px solid rgba(128, 128, 128, 0.439);
+}
+
+.image-container:active {
+  cursor: grabbing;
+}
+
+#main_pic {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+  will-change: transform;
+}
+
+
+/* DATE SLIDER */
+
+.date-slider-container {
+  width: 80%;
+  margin: 20px auto;
+  text-align: center;
+}
+
+.date-label {
+  margin-bottom: 8px;
+  font-weight: bold;
+  font-size: 14px;
+  color: #333;
+}
+
+#dateSlider {
+  width: 100%;
+  cursor: pointer;
+}
+
+.date-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #666;
+}
+
+/* COMPARISON SECTION */
+
+.comparison-container {
   display: flex;
   align-items: flex-start;
   justify-content: space-evenly;
@@ -85,7 +161,7 @@ comparison-container {
 }
 
 .comparison-column {
-  width: 45%; /* Slightly less than half to allow for spacing */
+  width: 45%;
   text-align: center;
 }
 
@@ -103,97 +179,14 @@ comparison-container {
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-.main-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-/* .image-container {
-  position: relative;
+/* TABLE STATS */
 
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  width: 90vw;
-  max-width: 500px;
-
-  max-height: 85vh;
-} */
-.image-container {
-  position: relative;
-
-  width: 90vw;
-  max-width: 500px;
-
-  display: inline-block;
-}
-
-#main_pic {
-  display: block;
-
+.table_stats img {
   width: 100%;
-  height: auto;
-
   object-fit: contain;
 }
 
-#overlay_pic,
-#overlay_pic_names {
-  margin-top: 20px;
-  position: absolute;
-
-  top: 0;
-  left: 0;
-
-  width: 100%;
-  height: auto;
-
-  display: none;
-
-  pointer-events: none;
-}
-
-#overlay_pic {
-  opacity: 0.35;
-  z-index: 1;
-}
-
-#overlay_pic_names {
-  opacity: 1;
-  z-index: 2;
-}
-
-#overlay_pic_names {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-
-  opacity: 1.;          /* transparency */
-  pointer-events: none;   /* clicks go through */
-  z-index: 2;
-  display: none;          /* hidden by default */
-}
-
-.overlay-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 10;
-}
-
-.date-slider {
-  margin-top: 20px;
-
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-}
+/* TIMESERIES */
 
 .timeseries img {
   width: 70%;
@@ -201,12 +194,8 @@ comparison-container {
   margin: 20px auto;
 }
 
-.table_stats img {
-  width: 100%;
-  object-fit: contain;
-}
+/* DISTRICT GRID */
 
-/* 🗺️ District Grid */
 .district-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -225,3 +214,52 @@ comparison-container {
 .district-grid img:hover {
   transform: scale(1.02);
 }
+
+.reset-view-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+
+  background: rgba(0,0,0,0.6);
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+
+  cursor: pointer;
+  font-size: 12px;
+
+  z-index: 10;
+}
+
+.reset-view-btn:hover {
+  background: rgba(0,0,0,0.8);
+}
+
+/* ===== DEBUG LAYOUT HELPERS ===== */
+/* 
+.top-section {
+  border: 3px solid red;
+}
+
+.main-container {
+  border: 3px solid blue;
+}
+
+.image-container {
+  border: 3px solid green;
+}
+
+.date-slider-container {
+  border: 2px dashed orange;
+}
+
+.comparison-container {
+  border: 3px solid purple;
+}
+
+.table_stats,
+.timeseries,
+.district-grid {
+  border: 3px solid gray;
+} */

@@ -4,70 +4,111 @@
   <meta charset="UTF-8">
   <title>Bike_it</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Clean styles for our new view tab interface buttons */
+    .view-nav {
+      text-align: center;
+      margin: 8px 0;
+    }
+    .view-nav button {
+      background-color: #f1f1f1;
+      border: 1px solid #ccc;
+      color: #333;
+      padding: 6px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      margin: 0 4px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+    .view-nav button:hover {
+      background-color: #e1e1e1;
+    }
+    .view-nav button.active {
+      background-color: #4A90E2;
+      color: white;
+      border-color: #357ABD;
+    }
+  </style>
 </head>
 <body>
 
-  <!-- 🔝 Top navigation -->
   <header>
     <div class="user-nav">
       <button onclick="navigate('PA')">PA</button>
       <button onclick="navigate('Hubert')">Hubert</button>
       <button onclick="navigate('Comparison')">Comparison</button>
     </div>
+
+    <div class="view-nav">
+      <button id="btn-view-standard" class="active" onclick="switchView('standard')">Standard View</button>
+      <button id="btn-view-passatges" onclick="switchView('passatges')">Passatges View</button>
+    </div>
+
     <div class="district-nav" id="districtNav"></div>
   </header>
 
   <div class="top-section">
-    
-    <!-- LEFT: stats -->
+
     <img id="bar_pic" class="side-bar" />
 
-    <!-- RIGHT: main content -->
     <div class="main-container">
-      <div class="image-container">
+
+      <div class="image-container" id="imageContainer">
         <img id="main_pic" />
-
-        <!-- Overlay -->
-        <img id="overlay_pic" src="./plots/Barrios.png" />
-        <img id="overlay_pic_names" src="./plots/barrios_names.png" />
-
-        <!-- Toggle button -->
-        <button id="overlayToggle" class="overlay-btn">
-          Toggle Barrios
-        </button>
+        <button class="reset-view-btn" onclick="resetView()">⟳ Reset</button>
       </div>
 
-      <div id="dateSlider" class="date-slider"></div>
+      <div class="date-slider-container">
+
+        <div id="dateLabel" class="date-label">
+          Latest
+        </div>
+
+        <input
+          type="range"
+          id="dateSlider"
+          min="0"
+          max="0"
+          value="0"
+          step="1"
+        />
+
+        <div id="dateTicks" class="date-ticks"></div>
+
+      </div>
+
     </div>
 
   </div>
 
   <div id="comparison_section" class="comparison-container" style="display: none;">
+
     <div class="comparison-column">
-      <!-- <h3>PA</h3> -->
       <div style="display: flex; align-items: center;">
-         <img id="comp_left" style="width: 70%;" />
-         <img id="bar_pa" style="width: 25%; margin-left: 5px;" />
+        <img id="comp_left" style="width: 70%;" />
+        <img id="bar_pa" style="width: 25%; margin-left: 5px;" />
       </div>
     </div>
+
     <div class="comparison-column">
-      <!-- <h3>Hubert</h3> -->
       <div style="display: flex; align-items: center; flex-direction: row-reverse;">
-         <img id="comp_right" style="width: 70%;" />
-         <img id="bar_hubert" style="width: 25%; margin-right: 5px;" />
+        <img id="comp_right" style="width: 70%;" />
+        <img id="bar_hubert" style="width: 25%; margin-right: 5px;" />
       </div>
     </div>
+
   </div>
-  
+
   <div class="table_stats">
-    <img id="table_stats" />
+    <img id="table_stats" style="max-width: 100%; display: block; margin: 20px auto;" />
   </div>
-  
-  <div class="timeseries">
-    <img id="timeseries" />
+
+  <div class="timeseries-container" style="text-align: center; margin: 20px 0;">
+    <img id="timeseries" style="max-width: 90%;" />
   </div>
-  
-  <!-- 🗺️ District selector -->
+
   <div class="district-grid" id="districtGrid"></div>
 
   <script src="functions.js"></script>
