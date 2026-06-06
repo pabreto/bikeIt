@@ -232,7 +232,8 @@ function render() {
 
   if (currentUser === "Comparison") {
     compSection.style.display = "flex";
-
+    document.getElementById("comp_left_title").textContent = "PA";
+    document.getElementById("comp_right_title").textContent = "Hubert";
     document.getElementById("bar_pa").src =
       `stats/PA/stats_bars_${currentDistrict}_PA.png`;
 
@@ -300,23 +301,32 @@ function render() {
   const grid = document.getElementById("districtGrid");
 
   if (grid) {
-    grid.innerHTML = "";
+  grid.innerHTML = "";
 
-    districts.forEach(d => {
-      const imgEl = document.createElement("img");
+  districts.forEach(d => {
+    const container = document.createElement("div");
+    container.className = "district-item";
 
-      imgEl.src =
-        `plots/${currentUser}/${d}-${currentUser}.png`;
+    const label = document.createElement("div");
+    label.textContent = d.replace(/_/g, " ");
+    label.className = "district-label";
+    label.onclick = () => selectDistrict(d);
+    // console.log("district:", d);
+    const imgEl = document.createElement("img");
+    imgEl.src = `plots/${currentUser}/${d}-${currentUser}.png`;
+    
+    if (d === currentDistrict) {
+      imgEl.style.outline = "5px solid #ff4444";
+      imgEl.style.outlineOffset = "-5px";
+    }
 
-      if (d === currentDistrict) {
-        imgEl.style.outline = "5px solid #ff4444";
-        imgEl.style.outlineOffset = "-5px";
-      }
+    imgEl.onclick = () => selectDistrict(d);
 
-      imgEl.onclick = () => selectDistrict(d);
+    container.appendChild(label);
+    container.appendChild(imgEl);
 
-      grid.appendChild(imgEl);
-    });
+    grid.appendChild(container);
+  });
   }
 }
 
