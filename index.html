@@ -4,33 +4,6 @@
   <meta charset="UTF-8">
   <title>Bike_it</title>
   <link rel="stylesheet" href="styles.css">
-  <style>
-    /* Clean styles for our new view tab interface buttons */
-    .view-nav {
-      text-align: center;
-      margin: 8px 0;
-    }
-    .view-nav button {
-      background-color: #f1f1f1;
-      border: 1px solid #ccc;
-      color: #333;
-      padding: 6px 16px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: bold;
-      margin: 0 4px;
-      border-radius: 4px;
-      transition: all 0.2s ease;
-    }
-    .view-nav button:hover {
-      background-color: #e1e1e1;
-    }
-    .view-nav button.active {
-      background-color: #4A90E2;
-      color: white;
-      border-color: #357ABD;
-    }
-  </style>
 </head>
 <body>
 
@@ -87,6 +60,7 @@
 
     <div class="comparison-column">
       <div style="display: flex; align-items: center;">
+        <h3 id="comp_left_title"></h3>
         <img id="comp_left" style="width: 70%;" />
         <img id="bar_pa" style="width: 25%; margin-left: 5px;" />
       </div>
@@ -94,6 +68,7 @@
 
     <div class="comparison-column">
       <div style="display: flex; align-items: center; flex-direction: row-reverse;">
+        <h3 id="comp_right_title"></h3>
         <img id="comp_right" style="width: 70%;" />
         <img id="bar_hubert" style="width: 25%; margin-right: 5px;" />
       </div>
@@ -102,11 +77,11 @@
   </div>
 
   <div class="table_stats">
-    <img id="table_stats" style="max-width: 100%; display: block; margin: 20px auto;" />
+    <img id="table_stats" />
   </div>
 
-  <div class="timeseries-container" style="text-align: center; margin: 20px 0;">
-    <img id="timeseries" style="max-width: 90%;" />
+  <div class="timeseries">
+    <img id="timeseries" />
   </div>
 
   <div class="district-grid" id="districtGrid"></div>

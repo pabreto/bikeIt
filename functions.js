@@ -7,7 +7,7 @@ let currentUser = defaultUser;
 let currentDistrict = defaultDistrict;
 let currentDate = null;
 let availableDates = {};
-let currentView = "standard"; // 🔄 Tracking active sub-tab state view
+let currentView = "standard"; // Track active sub-tab view state
 
 let container;
 let img;
@@ -42,7 +42,7 @@ function fitImageToContainer() {
 
   baseScale = Math.min(cw / iw, ch / ih);
 
-  scale = 1;   // reset zoom level
+  scale = 1;   // IMPORTANT: reset zoom level (not pixel scale)
   posX = 0;
   posY = 0;
 
@@ -56,49 +56,101 @@ function resetView() {
   applyTransform();
 }
 
-function applyTransform() {
-  if (!img) return;
-  img.style.transform = `translate(${posX}px, ${posY}px) scale(${baseScale * scale})`;
+function navigate(user) {
+  currentDate = null; // reset to latest
+  updateURL(user, currentDistrict);
 }
 
 function selectDistrict(district) {
+  currentDate = null; // reset to latest
   updateURL(currentUser, district);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function selectDate(date) {
   currentDate = date;
-  render();
+  updateURL(currentUser, currentDistrict, date);
 }
 
-// 🔄 NEW: View Tab Change Action Click Handler
+// Sub-Tab Change Handler
 function switchView(viewType) {
   currentView = viewType;
   
-  // Update view sub-tab button active layout indicators
+  // Update UI sub-navigation button active classes
   document.getElementById("btn-view-standard").classList.toggle("active", viewType === "standard");
   document.getElementById("btn-view-passatges").classList.toggle("active", viewType === "passatges");
   
   render();
 }
 
-function navigate(user) {
-  currentDate = null; // reset to latest snapshot on user swap
-  updateURL(user, currentDistrict);
-}
-
-function updateURL(user, district) {
-  const url = new URL(window.location);
-  url.searchParams.set("user", user);
-  url.searchParams.set("district", district);
-  window.history.pushState({}, "", url);
-  render();
+function updateURL(user, district, date = null) {
+  const datePart = date ? `/${date}` : "";
+  window.location.hash = `${user}/${district}${datePart}`;
 }
 
 function readURL() {
-  const params = new URLSearchParams(window.location.search);
-  currentUser = params.get("user") || defaultUser;
-  currentDistrict = params.get("district") || defaultDistrict;
+  const hash = window.location.hash.replace("#", "");
+  if (!hash) {
+    currentUser = defaultUser;
+    currentDistrict = defaultDistrict;
+    currentDate = null;
+    return;
+  }
+  const parts = hash.split("/");
+  currentUser = parts[0] || defaultUser;
+  currentDistrict = parts[1] || defaultDistrict;
+  currentDate = parts[2] || null;
 }
+
+function attachZoomPan() {
+
+  // ZOOM (scroll)
+  container.addEventListener("wheel", (e) => {
+    e.preventDefault();
+
+    const zoomIntensity = 0.1;
+    const delta = e.deltaY < 0 ? 1 : -1;
+
+    scale = Math.min(6, Math.max(0.2, scale + delta * zoomIntensity));
+
+    applyTransform();
+  }, { passive: false });
+
+  // DRAG START
+  container.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    startX = e.clientX - posX;
+    startY = e.clientY - posY;
+  });
+
+  // DRAG MOVE
+  window.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+
+    posX = e.clientX - startX;
+    posY = e.clientY - startY;
+
+    applyTransform();
+  });
+
+  // DRAG END
+  window.addEventListener("mouseup", () => {
+    isDragging = false;
+  });
+
+}
+
+function applyTransform() {
+  if (!img) return;
+
+  img.style.transform = `
+    translate(-50%, -50%)
+    translate(${posX}px, ${posY}px)
+    scale(${baseScale * scale})
+  `;
+}
+
+/* ---------------- RENDER ---------------- */
 
 function render() {
   readURL();
@@ -113,30 +165,46 @@ function render() {
   const mainPicElem = document.getElementById("main_pic");
   const barPicElem = document.getElementById("bar_pic");
 
-  // Determine subfolder based on current active view segment selection
+  // Determine subfolder based on active view segment selection
   const viewSubPath = currentView === "passatges" ? "passatges/" : "";
 
-  /* MAIN IMAGE MAPS */
+  /* reset zoom ONLY when image changes */
   if (mainPicElem) {
+    mainPicElem.onload = () => {
+      fitImageToContainer();
+    };
+
     if (currentDate) {
-      mainPicElem.src = `plots/${currentUser}/${viewSubPath}${currentDistrict}-${currentUser}.${currentDate}.png`;
+      mainPicElem.src =
+        `plots/${currentUser}/${viewSubPath}${currentDistrict}-${currentUser}.${currentDate}.png`;
     } else {
-      mainPicElem.src = `plots/${currentUser}/${viewSubPath}${currentDistrict}-${currentUser}.png`;
+      mainPicElem.src =
+        `plots/${currentUser}/${viewSubPath}${currentDistrict}-${currentUser}.png`;
     }
   }
 
-  /* DATE SLIDER SELECTION */
   const slider = document.getElementById("dateSlider");
   const label = document.getElementById("dateLabel");
   const ticks = document.getElementById("dateTicks");
 
   if (slider) {
-    const dates = (availableDates[currentDistrict] && availableDates[currentDistrict][currentUser]) || [];
+
+    const dates =
+      (availableDates[currentDistrict] &&
+       availableDates[currentDistrict][currentUser]) || [];
+
     const allDates = [...dates, null];
+
     slider.min = 0;
     slider.max = allDates.length - 1;
-    const currentIndex = currentDate ? allDates.indexOf(currentDate) : allDates.length - 1;
-    slider.value = currentIndex >= 0 ? currentIndex : allDates.length - 1;
+
+    const currentIndex =
+      currentDate
+        ? allDates.indexOf(currentDate)
+        : allDates.length - 1;
+
+    slider.value = currentIndex;
+
     label.textContent = currentDate || "Latest";
 
     slider.oninput = (e) => {
@@ -144,6 +212,7 @@ function render() {
       const selectedDate = allDates[idx];
       label.textContent = selectedDate || "Latest";
     };
+
     slider.onchange = (e) => {
       const idx = parseInt(e.target.value);
       const selectedDate = allDates[idx];
@@ -151,18 +220,22 @@ function render() {
     };
 
     ticks.innerHTML = "";
-    const numTicks = Math.min(5, allDates.length);
+
+    const numTicks = 5;
+
     for (let i = 0; i < numTicks; i++) {
-      const idx = Math.round(i * (allDates.length - 1) / (numTicks - 1));
+      const idx = Math.round(
+        i * (allDates.length - 1) / (numTicks - 1)
+      );
+
       const tick = document.createElement("span");
       tick.textContent = allDates[idx] || "Latest";
       ticks.appendChild(tick);
     }
   }
 
-  /* SIDE VERTICAL BAR METER CHART */
+  /* BAR IMAGE */
   if (barPicElem) {
-    // Hide side bar meters during passatges views
     if (currentUser === "Comparison" || currentView === "passatges") {
       barPicElem.style.display = "none";
     } else {
@@ -171,11 +244,14 @@ function render() {
     }
   }
 
-  /* COMPARISON VIEW PANEL BLOCKS */
+  /* COMPARISON */
   const compSection = document.getElementById("comparison_section");
+
   if (currentUser === "Comparison") {
     compSection.style.display = "flex";
-
+    document.getElementById("comp_left_title").textContent = "PA";
+    document.getElementById("comp_right_title").textContent = "Hubert";
+    
     const barPa = document.getElementById("bar_pa");
     const barHubert = document.getElementById("bar_hubert");
 
@@ -195,13 +271,15 @@ function render() {
     compSection.style.display = "none";
   }
 
-  /* DATE SLIDER CONTAINER CONTAINER VISIBILITY */
+  /* SLIDER VISIBILITY */
   if (sliderContainer) {
-    sliderContainer.style.display = currentUser === "Comparison" ? "none" : "block";
+    sliderContainer.style.display =
+      currentUser === "Comparison" ? "none" : "block";
   }
 
-  /* DYNAMIC RENDER OF THE GENERATED STATS IMAGES */
+  /* STATS */
   const tableStatsElem = document.getElementById("table_stats");
+
   if (tableStatsElem) {
     tableStatsElem.style.display = "block";
     const statPrefix = currentView === "passatges" ? "stats-passatges-" : "stats-";
@@ -209,14 +287,15 @@ function render() {
     if (currentDistrict === "Barcelona") {
       tableStatsElem.src = `stats/${currentUser}/${statPrefix}${currentUser}.png`;
     } else {
-      tableStatsElem.src = `stats/${currentUser}/${statPrefix}${currentDistrict}-${currentUser}.png`;
+      tableStatsElem.src =
+        `stats/${currentUser}/${statPrefix}${currentDistrict}-${currentUser}.png`;
     }
   }
 
-  /* HISTORICAL TIME-SERIES GRAPHS */
+  /* TIMESERIES */
   const timeseriesElem = document.getElementById("timeseries");
+
   if (timeseriesElem) {
-    // Hide timeseries in passatges view since the backend does not output passatges lines
     if (currentView === "passatges") {
       timeseriesElem.style.display = "none";
     } else {
@@ -229,8 +308,9 @@ function render() {
     }
   }
 
-  /* SUB DISTRICT SELECTION BUTTON BAR BAR */
+  /* NAV */
   const nav = document.getElementById("districtNav");
+
   if (nav) {
     nav.innerHTML = "";
     districts.forEach(d => {
@@ -242,20 +322,33 @@ function render() {
     });
   }
 
-  /* LOWER MAPPED ARCHIVE FOOTER PHOTO GRID OVERVIEW */
+  /* GRID */
   const grid = document.getElementById("districtGrid");
+
   if (grid) {
     grid.innerHTML = "";
     districts.forEach(d => {
+      const container = document.createElement("div");
+      container.className = "district-item";
+
+      const label = document.createElement("div");
+      label.textContent = d.replace(/_/g, " ");
+      label.className = "district-label";
+      label.onclick = () => selectDistrict(d);
+
       const imgEl = document.createElement("img");
       imgEl.src = `plots/${currentUser}/${viewSubPath}${d}-${currentUser}.png`;
-
+      
       if (d === currentDistrict) {
         imgEl.style.outline = "5px solid #ff4444";
         imgEl.style.outlineOffset = "-5px";
       }
+
       imgEl.onclick = () => selectDistrict(d);
-      grid.appendChild(imgEl);
+
+      container.appendChild(label);
+      container.appendChild(imgEl);
+      grid.appendChild(container);
     });
   }
 }
@@ -266,46 +359,9 @@ async function init() {
   container = document.getElementById("imageContainer");
   img = document.getElementById("main_pic");
 
-  if (container && img) {
-    window.addEventListener("resize", fitImageToContainer);
-
-    container.addEventListener("mousedown", (e) => {
-      if (e.target === img || e.target === container) {
-        isDragging = true;
-        startX = e.clientX - posX;
-        startY = e.clientY - posY;
-        container.style.cursor = "grabbing";
-        e.preventDefault();
-      }
-    });
-
-    window.addEventListener("mousemove", (e) => {
-      if (!isDragging) return;
-      posX = e.clientX - startX;
-      posY = e.clientY - startY;
-      applyTransform();
-    });
-
-    window.addEventListener("mouseup", () => {
-      isDragging = false;
-      if (container) container.style.cursor = "grab";
-    });
-
-    container.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      const zoomFactor = 1.1;
-      if (e.deltaY < 0) {
-        scale *= zoomFactor;
-      } else {
-        scale /= zoomFactor;
-      }
-      scale = Math.max(0.5, Math.min(scale, 20));
-      applyTransform();
-    }, { passive: false });
-  }
-
+  attachZoomPan();
   render();
 }
 
-window.addEventListener("popstate", render);
-window.addEventListener("DOMContentLoaded", init);
+window.addEventListener("load", init);
+window.addEventListener("hashchange", render);
