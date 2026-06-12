@@ -234,16 +234,16 @@ function render() {
     }
   }
 
-  /* BAR IMAGE */
+
   if (barPicElem) {
-    if (currentUser === "Comparison" || currentView === "passatges") {
+    if (currentUser === "Comparison") {
       barPicElem.style.display = "none";
     } else {
       barPicElem.style.display = "block";
-      barPicElem.src = `stats/${currentUser}/stats_bars_${currentDistrict}_${currentUser}.png`;
-    }
+    barPicElem.src =
+      `stats/${currentUser}/${viewSubPath}stats_bars_${currentDistrict}_${currentUser}.png`;
+   }
   }
-
   /* COMPARISON */
   const compSection = document.getElementById("comparison_section");
 
@@ -255,15 +255,12 @@ function render() {
     const barPa = document.getElementById("bar_pa");
     const barHubert = document.getElementById("bar_hubert");
 
-    if (currentView === "passatges") {
-      barPa.style.display = "none";
-      barHubert.style.display = "none";
-    } else {
-      barPa.style.display = "block";
-      barHubert.style.display = "block";
-      barPa.src = `stats/PA/stats_bars_${currentDistrict}_PA.png`;
-      barHubert.src = `stats/Hubert/stats_bars_${currentDistrict}_Hubert.png`;
-    }
+    barPa.style.display = "block";
+    barHubert.style.display = "block";
+    
+    // Added ${viewSubPath} here to point to the correct folder when toggled
+    barPa.src = `stats/PA/${viewSubPath}stats_bars_${currentDistrict}_PA.png`;
+    barHubert.src = `stats/Hubert/${viewSubPath}stats_bars_${currentDistrict}_Hubert.png`;
 
     document.getElementById("comp_left").src = `plots/PA/${viewSubPath}${currentDistrict}-PA.png`;
     document.getElementById("comp_right").src = `plots/Hubert/${viewSubPath}${currentDistrict}-Hubert.png`;
@@ -326,30 +323,32 @@ function render() {
   const grid = document.getElementById("districtGrid");
 
   if (grid) {
-    grid.innerHTML = "";
-    districts.forEach(d => {
-      const container = document.createElement("div");
-      container.className = "district-item";
+  grid.innerHTML = "";
 
-      const label = document.createElement("div");
-      label.textContent = d.replace(/_/g, " ");
-      label.className = "district-label";
-      label.onclick = () => selectDistrict(d);
+  districts.forEach(d => {
+    const container = document.createElement("div");
+    container.className = "district-item";
 
-      const imgEl = document.createElement("img");
-      imgEl.src = `plots/${currentUser}/${viewSubPath}${d}-${currentUser}.png`;
-      
-      if (d === currentDistrict) {
-        imgEl.style.outline = "5px solid #ff4444";
-        imgEl.style.outlineOffset = "-5px";
-      }
+    const label = document.createElement("div");
+    label.textContent = d.replace(/_/g, " ");
+    label.className = "district-label";
+    label.onclick = () => selectDistrict(d);
+    // console.log("district:", d);
+    const imgEl = document.createElement("img");
+    imgEl.src = `plots/${currentUser}/${viewSubPath}${d}-${currentUser}.png`;
+    
+    if (d === currentDistrict) {
+      imgEl.style.outline = "5px solid #ff4444";
+      imgEl.style.outlineOffset = "-5px";
+    }
 
-      imgEl.onclick = () => selectDistrict(d);
+    imgEl.onclick = () => selectDistrict(d);
 
-      container.appendChild(label);
-      container.appendChild(imgEl);
-      grid.appendChild(container);
-    });
+    container.appendChild(label);
+    container.appendChild(imgEl);
+
+    grid.appendChild(container);
+  });
   }
 }
 
