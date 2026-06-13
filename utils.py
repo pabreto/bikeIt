@@ -35,7 +35,9 @@ def get_graph_stats(graph, district):
 
 def save_last_read_gps_point(i, district, user):
     os.makedirs("edges/" + user, exist_ok=True)
-    file_list_edges = "edges/last_gpx_point_"+district+"-"+user+".txt"
+    file_list_edges = "edges/" + user + "/last_gpx_point_" + district + "-" + user + ".txt"
+    if os.isfile(file_list_edges):
+        os.file.copy(file_list_edges, file_list_edges + ".prev")
     with open(file_list_edges, "w") as f:
         f.write(str(i))
 
@@ -52,28 +54,39 @@ def get_coords_date_gpx(user):
                 coords_gpx.append((points.latitude, points.longitude, points.time))
     return coords_gpx, points.time
 
-def get_coords_dates_gpx(user):
+def get_coords_dates_gpx(user, start_idx=0):
+    """
+    Optimized to only extract and return points from start_idx onwards,
+    drastically reducing processing time and memory for subsequent runs.
+    """
     file = glob.glob(f'segments/{user}/*.gpx')[0] 
     gpx_file = open(file, 'r') 
     gpx = gpxpy.parse(gpx_file) 
     coords_gpx = []
     dates_gpx = []
+    
+    current_count = 0
     for track in gpx.tracks:
         for s, segment in enumerate(track.segments):
             if (user == 'hubert') & (s in [1, 6]):
                 continue
             for points in segment.points:
-                coords_gpx.append((points.latitude, points.longitude))
-                dates_gpx.append(points.time.replace(tzinfo=None))
-    return coords_gpx, points.time, dates_gpx
+                # Only keep and process the point if we are past the history threshold
+                if current_count >= start_idx:
+                    coords_gpx.append((points.latitude, points.longitude))
+                    dates_gpx.append(points.time.replace(tzinfo=None))
+                current_count += 1
+                
+    # Return total count of points parsed in this file so we know the next checkpoint index
+    return coords_gpx, points.time, dates_gpx, current_count
 
-def get_list_edges(graph, coords_gpx, dates_gpx, district, user, start=None):
+def get_list_edges(graph, user, district, start=None):
     os.makedirs("edges/" + user, exist_ok=True)
     file_list_edges = "edges/"+user+"/list_edges_"+district+"-"+user+".txt"
     list_edges = []
 
     if start and os.path.isfile(file_list_edges):
-        print("starting from file",file_list_edges)
+        print(f"starting from file {file_list_edges} (index: {start})")
         with open(file_list_edges, "r") as f:
             for line in f:
                 if line.strip():
@@ -83,18 +96,20 @@ def get_list_edges(graph, coords_gpx, dates_gpx, district, user, start=None):
             pass 
 
     idx_start = start if start is not None else 0
-    to_process = coords_gpx[idx_start:]
+    
+    # OPTIMIZATION: Only parse the unread fraction of the GPX coordinates
+    coords_gpx, _, dates_gpx, total_gpx_points = get_coords_dates_gpx(user, start_idx=idx_start)
 
-    if not to_process:
+    if not coords_gpx:
         return list_edges
 
-    lats = [c[0] for c in to_process]
-    lons = [c[1] for c in to_process]
+    lats = [c[0] for c in coords_gpx]
+    lons = [c[1] for c in coords_gpx]
     edges = ox.nearest_edges(graph, X=lons, Y=lats)
     gdf_edges = ox.graph_to_gdfs(graph, nodes=False)
 
     with open(file_list_edges, "a") as f:
-        for (u, v, k), edge_date in zip(edges, dates_gpx[idx_start:]):
+        for (u, v, k), edge_date in zip(edges, dates_gpx):
             edge_attributes = gdf_edges.loc[(u, v, k)]
             if type(edge_attributes.get('name')) == str:  
                 street_name = normalize_street_name(edge_attributes.get('name'))
@@ -110,14 +125,13 @@ def get_list_edges(graph, coords_gpx, dates_gpx, district, user, start=None):
                 list_edges.append((*edge_key, edge_date.isoformat()))
                 f.write(f"{(*edge_key, edge_date.isoformat())}\n")
 
-    save_last_read_gps_point(get_coords_date_gpx(user)[0], district, user)
+    # Save the absolute updated count checkpoint to the file
+    save_last_read_gps_point(total_gpx_points, district, user)
     return list_edges
 
 def load_last_gps_point(district, user):
     try:
-        file_list_edges = "edges/" + \
-            user+"/last_gpx_point_" + \
-            district+"-"+user+".txt"  # bug with reading previous
+        file_list_edges = "edges/" + user + "/last_gpx_point_" + district + "-" + user + ".txt"
         with open(file_list_edges, "r") as f:
             return int(f.read())
     except Exception:
@@ -128,12 +142,11 @@ def generate_list_edges(graph_dict, user, list_districts):
     for district in list_districts:
         print("Generating list edges", district, user)
         last_gps_point = load_last_gps_point(district, user)
-        coords, _, dates_gpx = get_coords_dates_gpx(user)
+        # Directly pass management to get_list_edges to manage smart segment extraction
         list_edges_read[district] = get_list_edges(graph_dict[district],
-                                                   coords, dates_gpx,
-                                                   district, user,
+                                                   user,
+                                                   district,
                                                    last_gps_point)
-
     return list_edges_read
 
 def highlight_edges(graph, list_edges, user, color, district, date):
@@ -157,33 +170,20 @@ def highlight_edges(graph, list_edges, user, color, district, date):
     return edge_colors, edge_widths
 
 
-def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, date,last_day):
+def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, date, last_day):
     os.makedirs("plots/"+user, exist_ok=True)
     os.makedirs("stats/"+user, exist_ok=True)
     if user == "Comparison":
         plot_name = f"plots/{user}/{district.replace(' ', '_')}-{user}.png"
         latest_plot = f"plots/{user}/{district.replace(' ', '_')}-{user}.png"
-        latest_plot_with_bg = f"plots/{user}/{district.replace(' ', '_')}-bg-{user}.png"
-
     else:
         plot_name = f"plots/{user}/{district.replace(' ', '_')}-{user}.{date}.png"
         latest_plot = f"plots/{user}/{district.replace(' ', '_')}-{user}.png"
-        # latest_plot_with_bg = f"plots/{user}/{district.replace(' ', '_')}-bg-{user}.png"
 
     if (user == "Comparison") | ((user != "Comparison") &
                                  (not os.path.isfile(plot_name))):
         print(f"Plotting {district} for {date}")
 
-        # 1. Ensure the graph is projected to Web Mercator (EPSG:3857)
-        # This is the standard for background tiles
-        # G_proj = ox.project_graph(graph_dict, to_crs='EPSG:3857')
-
-        # # 2. Get District Boundary and project it to match the graph
-        # # Added .iloc[0:1] to ensure we handle the geodataframe correctly
-        # boundary_gdf = ox.geocode_to_gdf(district + ", Barcelona, Spain")
-        # boundary = boundary_gdf.to_crs(G_proj.crs).iloc[0:1]
-        
-        # 3. Plot the graph
         fig, ax = ox.plot.plot_graph(
             graph_dict,
             edge_color=edge_colors,
@@ -337,17 +337,14 @@ def dataframe_to_png(df, filename, list_districts):
     table.set_fontsize(10)
     table.scale(1, 1.6)
     for (row, col), cell in table.get_celld().items():
-        # Header row
         if row == 0:
             cell.set_text_props(weight="bold")
             cell.set_height(cell.get_height() * 1.8)
 
-        # District names
         if col == 0 and row > 0:
             cell.set_text_props(weight="bold")
             cell.get_text().set_ha("left")
 
-        # Diff columns
         cell_text = cell.get_text().get_text()
         if "diff" in df_display.columns[col]:
             try:
@@ -355,11 +352,8 @@ def dataframe_to_png(df, filename, list_districts):
                 if num_val >= 0:
                     cell.set_text_props(color="green", weight="bold")
                 else:
-            # This handles <= 0
                     cell.set_text_props(color="blue", weight="bold")
             except ValueError:
-        # This handles the Header row or non-numeric text
-        # Usually, headers are at row index 0
                 pass
     plt.tight_layout()
     plt.savefig(filename, dpi=200, bbox_inches="tight")
@@ -404,8 +398,6 @@ def create_gif(district, user):
     with open(list_processed, "w") as f:
         json.dump(processed_images + new_images, f, indent=2)
     
-   # img_objects = [Image.open(f) for f in images]
-    
     for img in new_img_objects:
         img.close()
 
@@ -414,23 +406,18 @@ def merge_edges(edge_colors_pa,edge_colors_hubert):
     for i in range(max(len(edge_colors_hubert),len(edge_colors_pa))):
         if edge_colors_hubert[i] == "red" or edge_colors_hubert[i] == "green":
             if edge_colors_pa[i] == "red" or edge_colors_pa[i] == "green":
-                merged_colors.append("red") #mapped by both
+                merged_colors.append("red")
             else:
-                merged_colors.append("blue") #mapped by Hubert only
+                merged_colors.append("blue")
         else:
             if edge_colors_pa[i] == "red" or edge_colors_pa[i] == "green":
-                merged_colors.append("green") #mapped by PA only
+                merged_colors.append("green")
             else:
-                merged_colors.append("grey") #mapped by hite none
+                merged_colors.append("grey")
     return merged_colors
 
 def plot_district_user_bars(df, user, district):
-    """
-    Generates and saves a two-bar vertical chart where colors 'fill' 
-    a 100% background bar.
-    """
     try:
-        # Handle district filtering
         dist_data = filter_df_for_district(df, df['districts'].tolist(), district).iloc[0]
     except (IndexError, KeyError):
         return
@@ -442,46 +429,34 @@ def plot_district_user_bars(df, user, district):
     values = [percentage_street, percentage_segments]
     bar_colors = ['tab:blue', 'tab:red']
 
-    # Create the plot
     fig, ax = plt.subplots(figsize=(3, 7)) 
     
-    # Clean up the axis
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_visible(False)
     ax.get_yaxis().set_visible(False)
-    ax.set_ylim(-15, 110) # Room for labels below and title above
+    ax.set_ylim(-15, 110)
 
     positions = np.arange(len(labels))
     bar_width = 0.6
 
-    # 1. Draw the BACKGROUND bars (the 100% "container")
     ax.bar(positions, [100, 100], width=bar_width, color='#eeeeee', 
            edgecolor='#cccccc', linewidth=0.5)
 
-    # 2. Draw the FILL bars (the actual data)
     bars = ax.bar(positions, values, width=bar_width, color=bar_colors)
 
-    # Add the Title
- #   ax.set_title(f"{district.replace('_', ' ')}\n{user}", fontsize=14, fontweight='bold', pad=25)
-
-    # Add percentage labels below the bars
     for bar, value in zip(bars, values):
         ax.text(bar.get_x() + bar.get_width() / 2, 
-                -2, # Just below the baseline
+                -2, 
                 f"{value:.0f}%", 
                 ha='center', va='top', fontsize=12, fontweight='bold')
 
-    # Add category labels (Streets/Segments)
     ax.set_xticks(positions)
     ax.set_xticklabels(labels, fontsize=10, fontweight='bold')
-    
-    # Optional: Add a "100%" markers or light grid line at the top
     ax.axhline(100, color='white', linewidth=1, linestyle='--', alpha=0.5)
 
     plt.tight_layout()
 
-    # Save the file
     os.makedirs(os.path.join("stats", user), exist_ok=True)
     clean_dist = district.replace(' ', '_')
     output_filename = os.path.join("stats", user, f"stats_bars_{clean_dist}_{user}.png")
@@ -492,16 +467,13 @@ def plot_district_user_bars(df, user, district):
 from shapely.geometry import Point
 
 def export_snapped_gpx(graph, user, district):
-    # Retrieve original coordinates and timestamps
-    coords_gpx, _, dates_gpx = get_coords_dates_gpx(user)
+    coords_gpx, _, dates_gpx, _ = get_coords_dates_gpx(user)
     lats = [c[0] for c in coords_gpx]
     lons = [c[1] for c in coords_gpx]
 
-    # Snap all points to find the nearest edges
     edge_ids = ox.nearest_edges(graph, X=lons, Y=lats)
     gdf_edges = ox.graph_to_gdfs(graph, nodes=False)
 
-    # Prepare new GPX structure
     new_gpx = gpxpy.gpx.GPX()
     gpx_track = gpxpy.gpx.GPXTrack(name=f"{user}_{district}_snapped")
     new_gpx.tracks.append(gpx_track)
@@ -509,33 +481,24 @@ def export_snapped_gpx(graph, user, district):
     gpx_track.segments.append(gpx_segment)
 
     for i, (u, v, k) in enumerate(edge_ids):
-        # 1. Get the actual road geometry (LineString)
         edge_data = gdf_edges.loc[(u, v, k)]
         geometry = edge_data.get('geometry')
-
-        # 2. Identify original point
         original_pt = Point(lons[i], lats[i])
 
         if geometry is None:
-            # Fallback for straight edges without complex geometry
             node_u = graph.nodes[u]
             node_v = graph.nodes[v]
-            # Create a simple line between nodes to snap to
             from shapely.geometry import LineString
             geometry = LineString([(node_u['x'], node_u['y']), (node_v['x'], node_v['y'])])
 
-        # 3. Project original point onto the edge to find the closest snapped coordinate
-        # .project finds distance along line; .interpolate returns the point at that distance
         snapped_pt = geometry.interpolate(geometry.project(original_pt))
 
-        # 4. Append to GPX (lon, lat)
         gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(
             latitude=snapped_pt.y,
             longitude=snapped_pt.x,
             time=dates_gpx[i]
         ))
 
-    # Save output
     os.makedirs(f"cleaned_gpx/{user}", exist_ok=True)
     output_path = f"cleaned_gpx/{user}/{district}_snapped.gpx"
     with open(output_path, "w") as f:
@@ -544,13 +507,11 @@ def export_snapped_gpx(graph, user, district):
     print(f"Point-snapped GPX saved: {output_path}")
 
     
-def get_missing_streets(mapped_streets,full_graph):
-        # G is your graph
+def get_missing_streets(mapped_streets, full_graph):
     street_names_full_graph = []
 
     for u, v, key, data in full_graph.edges(keys=True, data=True):
         name = normalize_street_name(data.get("name"))
-#        if name and name != "unkown":
         if name:
             street_names_full_graph.append(name)
 
@@ -560,8 +521,7 @@ def get_missing_streets(mapped_streets,full_graph):
             unique_street_names_full_graph.add(name[0])
         elif isinstance(name, str):
             unique_street_names_full_graph.add(name)
-    print("unique",unique_street_names_full_graph)
-
+    print("unique", unique_street_names_full_graph)
 
     return list(unique_street_names_full_graph - mapped_streets)
 
@@ -607,6 +567,7 @@ def normalize_street_name(name):
             .replace("*","")
             for n in name
         ]
+
 def plot_user_comparison_table(df_pa, df_hubert, list_districts, filename):
     df_comp = pd.merge(df_pa, df_hubert, on="districts", suffixes=('_PA', '_H'))
     base_cols = [c for c in df_pa.columns if c != "districts" and not c.startswith("total")]

@@ -87,7 +87,6 @@ for district in list_districts:
         if data.get('length', 0) < 25
     ]
     graph.remove_edges_from(edges_to_remove)
-    # print(f"Removed {len(edges_to_remove)} short edges from {district}")
     graph_dict[district] = graph
 
 stats = {}
@@ -102,7 +101,8 @@ all_user_snapshots = {user: {} for user in users}
 user_last_days = {}
 
 for user in users:
-    coords, _, dates_gpx = get_coords_dates_gpx(user)
+    # FIXED HERE: Added the 4th unpacking variable (_) to handle the total point count from your optimized utils.py
+    coords, _, dates_gpx, _ = get_coords_dates_gpx(user)
     unique_days = sorted(list(set(d.strftime("%Y-%m-%d") for d in dates_gpx)))
     full_history_edges = generate_list_edges(graph_dict, user, list_districts)
     if args.generate_missing_streets_district:
@@ -124,9 +124,19 @@ for user in users:
     last_day = unique_days[-1]
     user_last_days[user] = last_day
     for current_date in unique_days:
-        print(f"Processing {user} for {current_date}")
         stats_check_file = f"stats/{user}/stats-{user}.png"
-        # if current_date != last_day and not os.path.exists(stats_check_file):
+
+        is_historical_processed = True
+        for district in list_districts:
+            plot_name = f"plots/{user}/{district.replace(' ', '_')}-{user}.{current_date}.png"
+            if current_date != last_day and not os.path.exists(plot_name):
+                is_historical_processed = False
+                break
+
+        if current_date != last_day and is_historical_processed:
+            continue
+
+        print(f"Processing {user} for {current_date}")
 
         list_edges_snapshot = {}
         for district in list_districts:
@@ -143,7 +153,7 @@ for user in users:
         if current_date == last_day:
             all_user_snapshots[user] = {dist: list(edges) for
                                         dist, edges in list_edges_snapshot.items()}
-        # if not os.path.exists(stats_check_file):
+
         for district in list_districts:
             plot_mapped(
                 graph_dict[district],
@@ -199,7 +209,6 @@ for district in list_districts:
         last_day
     )
 
-# plot timeseries
 path_stats = os.path.join('stats', '*', 'stats-*.csv')
 files = glob.glob(path_stats)
 
@@ -223,7 +232,6 @@ for district in list_districts:
     total_str = dist_info['total streets']
     total_seg = dist_info['total segments']
 
-    # --- Individual plots for each user (2 timeseries) ---
     for user in users:
         os.makedirs(f"plots/{user}/timeseries/", exist_ok=True)
         data = full_df[(full_df['districts'] == district) &
@@ -256,7 +264,6 @@ for district in list_districts:
         plt.savefig(f"plots/{user}/timeseries/{district}-{user}.png")
         plt.close()
 
-    # --- Comparison plot for each district (4 timeseries) ---
     fig, ax1 = plt.subplots(figsize=(12, 7))
     ax2 = ax1.twinx()
 
@@ -286,7 +293,6 @@ for district in list_districts:
     ax2.set_ylabel(f'Mapped segments (Total: {total_seg})')
     plt.title(f"{district.replace('_', ' ')} - Comparison")
 
-    # Format X-axis
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
     fig.autofmt_xdate()
 
@@ -295,10 +301,8 @@ for district in list_districts:
 
     plt.tight_layout()
     os.makedirs("plots/Comparison/timeseries/", exist_ok=True)
-    plt.savefig("plots/Comparison/timeseries/{district}.png")
+    plt.savefig(f"plots/Comparison/timeseries/{district}.png")
     plt.close()
-
-# Generae the unique dates list
 
 print('Generating unique dates')
 base_dir = "plots"
@@ -316,11 +320,8 @@ for user in users:
         match = pattern.match(file)
         if match:
             district, user_name, date = match.groups()
-
-            # 🔑 use the loop 'user' (safer than filename)
             dates[district][user].add(date)
 
-# convert sets to sorted lists
 dates = {
     district: {
         user: sorted(list(date_set))
@@ -332,7 +333,6 @@ dates = {
 with open("dates.json", "w") as f:
     json.dump(dates, f, indent=2)
 
-# Create independent containers for the final calculation
 pa_data = {"PA": all_user_snapshots["PA"]}
 hubert_data = {"Hubert": all_user_snapshots["Hubert"]}
 df_pa, _ = get_final_stats("PA", pa_data, graph_dict, list_districts,
