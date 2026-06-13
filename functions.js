@@ -220,13 +220,16 @@ function render() {
     }
   }
 
-  /* BAR IMAGE */
+
   if (barPicElem) {
-    barPicElem.style.display = currentUser === "Comparison" ? "none" : "block";
+    if (currentUser === "Comparison") {
+      barPicElem.style.display = "none";
+    } else {
+      barPicElem.style.display = "block";
     barPicElem.src =
       `stats/${currentUser}/stats_bars_${currentDistrict}_${currentUser}.png`;
+   }
   }
-
   /* COMPARISON */
   const compSection = document.getElementById("comparison_section");
 

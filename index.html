@@ -7,7 +7,6 @@
 </head>
 <body>
 
-  <!-- 🔝 Top navigation -->
   <header>
     <div class="user-nav">
       <button onclick="navigate('PA')">PA</button>
@@ -20,19 +19,15 @@
 
   <div class="top-section">
 
-    <!-- LEFT: stats -->
     <img id="bar_pic" class="side-bar" />
 
-    <!-- RIGHT: main content -->
     <div class="main-container">
 
-      <!-- MAIN IMAGE -->
       <div class="image-container" id="imageContainer">
         <img id="main_pic" />
         <button class="reset-view-btn" onclick="resetView()">⟳ Reset</button>
       </div>
 
-      <!-- DATE SLIDER -->
       <div class="date-slider-container">
 
         <div id="dateLabel" class="date-label">
@@ -56,45 +51,36 @@
 
   </div>
 
-  <!-- COMPARISON -->
   <div id="comparison_section" class="comparison-container" style="display: none;">
 
     <div class="comparison-column">
-
       <div style="display: flex; align-items: center;">
         <h3 id="comp_left_title"></h3>
         <img id="comp_left" style="width: 70%;" />
         <img id="bar_pa" style="width: 25%; margin-left: 5px;" />
       </div>
-
     </div>
 
     <div class="comparison-column">
-
       <div style="display: flex; align-items: center; flex-direction: row-reverse;">
         <h3 id="comp_right_title"></h3>
         <img id="comp_right" style="width: 70%;" />
         <img id="bar_hubert" style="width: 25%; margin-right: 5px;" />
       </div>
-
     </div>
 
   </div>
 
-  <!-- TABLE STATS -->
   <div class="table_stats">
     <img id="table_stats" />
   </div>
 
-  <!-- TIMESERIES -->
   <div class="timeseries">
     <img id="timeseries" />
   </div>
 
-  <!-- DISTRICT GRID -->
   <div class="district-grid" id="districtGrid"></div>
 
   <script src="functions.js"></script>
-
 </body>
 </html>

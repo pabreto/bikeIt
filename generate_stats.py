@@ -1,13 +1,8 @@
 import pandas as pd
 import glob
-# import gpxpy.gpx
-# from shapely.geometry import LineString
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-# from shapely.geometry import Point
-# import contextily as ctx
-# import matplotlib.animation as animation
 from utils import (get_graph_stats, get_missing_streets,
                    get_coords_dates_gpx, generate_list_edges,
                    plot_mapped, highlight_edges, get_final_stats,
@@ -79,7 +74,7 @@ graph_type = "bike"
 os.makedirs("graphs", exist_ok=True)
 
 for district in list_districts:
-    filepath = "graphs/"+district+"-"+graph_type+".graphml"
+    filepath = f"graphs/{district}-{graph_type}.graphml"
     if not os.path.isfile(filepath):
         graph = ox.convert.to_undirected(
             ox.graph.graph_from_place(district + " ,Barcelona, Spain",
@@ -147,8 +142,7 @@ for user in users:
             edge_widths[user][district] = widths
         if current_date == last_day:
             all_user_snapshots[user] = {dist: list(edges) for
-                                        dist,
-                                        edges in list_edges_snapshot.items()}
+                                        dist, edges in list_edges_snapshot.items()}
         # if not os.path.exists(stats_check_file):
         for district in list_districts:
             plot_mapped(

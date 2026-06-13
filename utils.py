@@ -28,19 +28,16 @@ def get_graph_stats(graph, district):
         G_proj = ox.projection.project_graph(graph)
         nodes_proj = ox.convert.graph_to_gdfs(G_proj, edges=False)
         graph_area_m = nodes_proj.union_all().convex_hull.area
-        graph_area_m = nodes_proj.union_all().convex_hull.area
         stats = ox.stats.basic_stats(G_proj, area=graph_area_m, clean_int_tol=15)
         with open(stats_district, "w") as f:
             json.dump(stats, f, indent=2)
         return stats
-
 
 def save_last_read_gps_point(i, district, user):
     os.makedirs("edges/" + user, exist_ok=True)
     file_list_edges = "edges/last_gpx_point_"+district+"-"+user+".txt"
     with open(file_list_edges, "w") as f:
         f.write(str(i))
-
 
 def get_coords_date_gpx(user):
     file = glob.glob(f'segments/{user}/*.gpx')[0] 
@@ -52,11 +49,8 @@ def get_coords_date_gpx(user):
             if (user == 'hubert') & (s in [1, 6]):
                 continue
             for points in segment.points:
-                coords_gpx.append((points.latitude,
-                                   points.longitude,
-                                   points.time))
+                coords_gpx.append((points.latitude, points.longitude, points.time))
     return coords_gpx, points.time
-
 
 def get_coords_dates_gpx(user):
     file = glob.glob(f'segments/{user}/*.gpx')[0] 
@@ -72,7 +66,6 @@ def get_coords_dates_gpx(user):
                 coords_gpx.append((points.latitude, points.longitude))
                 dates_gpx.append(points.time.replace(tzinfo=None))
     return coords_gpx, points.time, dates_gpx
-
 
 def get_list_edges(graph, coords_gpx, dates_gpx, district, user, start=None):
     os.makedirs("edges/" + user, exist_ok=True)
@@ -97,14 +90,11 @@ def get_list_edges(graph, coords_gpx, dates_gpx, district, user, start=None):
 
     lats = [c[0] for c in to_process]
     lons = [c[1] for c in to_process]
-
     edges = ox.nearest_edges(graph, X=lons, Y=lats)
-
     gdf_edges = ox.graph_to_gdfs(graph, nodes=False)
 
     with open(file_list_edges, "a") as f:
         for (u, v, k), edge_date in zip(edges, dates_gpx[idx_start:]):
-
             edge_attributes = gdf_edges.loc[(u, v, k)]
             if type(edge_attributes.get('name')) == str:  
                 street_name = normalize_street_name(edge_attributes.get('name'))
@@ -116,14 +106,12 @@ def get_list_edges(graph, coords_gpx, dates_gpx, district, user, start=None):
             length_edge = float(edge_attributes.get('length'))
             edge_key = ((u, v, k), street_name, length_edge)
 
-#            if edge_key not in {e[:3] for e in list_edges}:
             if edge_key[0] not in {e[0] for e in list_edges}:
                 list_edges.append((*edge_key, edge_date.isoformat()))
                 f.write(f"{(*edge_key, edge_date.isoformat())}\n")
 
     save_last_read_gps_point(get_coords_date_gpx(user)[0], district, user)
     return list_edges
-
 
 def load_last_gps_point(district, user):
     try:
@@ -134,7 +122,6 @@ def load_last_gps_point(district, user):
             return int(f.read())
     except Exception:
         return None
-
 
 def generate_list_edges(graph_dict, user, list_districts):
     list_edges_read = {}
@@ -149,7 +136,6 @@ def generate_list_edges(graph_dict, user, list_districts):
 
     return list_edges_read
 
-
 def highlight_edges(graph, list_edges, user, color, district, date):
     edge_date_map = {
         data[0]: datetime.fromisoformat(data[3]) for
@@ -159,7 +145,6 @@ def highlight_edges(graph, list_edges, user, color, district, date):
     edge_widths = []
     for u, v, k in graph.edges(keys=True):
         edge_id = (u, v, k)
-
         if edge_id in edge_date_map:
             if edge_date_map[edge_id] >= date_limit:
                 edge_colors.append("green")
@@ -225,86 +210,35 @@ def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, dat
         except Exception:
             pass
 
-
 def get_number_of_mapped_streets(list_edges):
     mapped_street_names = [normalize_street_name(edge_data[1]) for
                            edge_data in list_edges]
-
     return len(set(mapped_street_names))
 
-
 def get_number_of_streets(graph):
-
     unique_street_names_from_G = set()
-
-# Iterate over all edges in the graph,
-# retrieving the attribute data for each edge
     for _, _, data in graph.edges(data=True):
         name_entry = normalize_street_name(data.get('name'))
-
-    # Check if the 'name' attribute exists
         if name_entry is not None:
-
             if isinstance(name_entry, list):
-                #   If the value is a list (multiple names),
-                #   add all individual names to the set
-                #   for name in name_entry:
-                #   unique_street_names_from_G.add(name_entry)
-                #   for name in name_entry:
                 unique_street_names_from_G.add(name_entry[0])
             elif isinstance(name_entry, str):
-                # If the value is a single string, add it to the set
                 unique_street_names_from_G.add(name_entry)
-
-
-# The count of unique street names is the length of the final set
-    count_unique_names_G = len(unique_street_names_from_G)
-    # print("streets in final stats",unique_street_names_from_G)
-    return count_unique_names_G
-
-
-# def display_names(graph):
-
-#    unique_street_names_from_G = set()
-
-# Iterate over all edges in the graph, retrieving
-# the attribute data for each edge
-#    for _, _, data in graph.edges(data=True):
-#        name_entry = normalize_street_name(data.get('name'))
-
-#    # Check if the 'name' attribute exists
-#        if name_entry is not None:
-#            print(name_entry)
-#            if isinstance(name_entry, list):
-#                # If the value is a list (multiple names), add all individual names to the set
-#                for name in name_entry:
-#                    unique_street_names_from_G.add(name)
-#            elif isinstance(name_entry, str):
-#            # If the value is a single string, add it to the set
-#                unique_street_names_from_G.add(name_entry)
-#            print()
-
-# The count of unique street names is the length of the final set
-#    count_unique_names_G = len(unique_street_names_from_G)
-    #print("Total number of streets",count_unique_names_G)
-#    return count_unique_names_G
+    return len(unique_street_names_from_G)
 
 def get_final_stats(user, list_edges, graph_dict, list_districts, stats, date):
     stats_file = f"stats/{user}/stats-{user}_{date}.csv"
     try:
-        # Find the previous day's file by looking at all CSVs for this user
         all_prev = sorted(glob.glob(f'stats/{user}/stats-{user}_*.csv'))
-        # If the current file exists, the 'previous' is the one before it
         if stats_file in all_prev:
             idx = all_prev.index(stats_file)
             prev_stats_file = all_prev[idx-1] if idx > 0 else None
         else:
             prev_stats_file = all_prev[-1] if all_prev else None
-
-            
         df_prev = pd.read_csv(prev_stats_file) if prev_stats_file else []
     except:
         df_prev = []
+
     if os.path.exists(stats_file):
         df = pd.read_csv(stats_file)
     else:
@@ -318,21 +252,18 @@ def get_final_stats(user, list_edges, graph_dict, list_districts, stats, date):
         for district in list_districts:
             number_of_mapped_streets.append(get_number_of_mapped_streets(list_edges[user][district]))
             total_number_of_streets.append(get_number_of_streets(graph_dict[district]))
-#            print("names")
-#            display_names(graph_dict[district])
-#            print(user,district)
             number_of_mapped_segments.append(len(list_edges[user][district]))
             total_number_of_segments.append(stats[district]["m"])
             mapped_kms.append(sum(edge[2] for edge in list_edges[user][district])/1000)
             total_street_length.append(stats[district]["edge_length_total"]/1000)
-
+            
         df = pd.DataFrame({
             "districts": list_districts,
             "mapped streets": number_of_mapped_streets,
             "total streets": total_number_of_streets,
             "percentage street": np.array(number_of_mapped_streets)/np.array(total_number_of_streets)*100,
             "mapped segments": number_of_mapped_segments,
-            "total segments" : total_number_of_segments, 
+            "total segments" : total_number_of_segments,
             "percentage segments": np.array(number_of_mapped_segments)/np.array(total_number_of_segments)*100,
             "mapped kms": mapped_kms,
             "total street length": total_street_length,
@@ -340,8 +271,8 @@ def get_final_stats(user, list_edges, graph_dict, list_districts, stats, date):
         })
         df.to_csv(stats_file,index=False)
     return df,df_prev
-    
-def plot_stats(final_table,previous_table,list_districts):
+
+def plot_stats(final_table, previous_table, list_districts):
     if isinstance(previous_table, pd.DataFrame) and not previous_table.empty:
         diff = final_table.set_index("districts").subtract(previous_table.set_index("districts"), fill_value=0).abs()
         diff = diff.reset_index()
@@ -351,7 +282,6 @@ def plot_stats(final_table,previous_table,list_districts):
             if col != "districts":
                 new_data[col] = final_table[col]
                 display_cols.append(col)
-        
                 if (diff[col] != 0).any() and col != "total street length":
                     delta_col_name = "diff "+ col
                     new_data[delta_col_name] = diff[col]
@@ -510,8 +440,6 @@ def plot_district_user_bars(df, user, district):
 
     labels = ['Streets', 'Segments']
     values = [percentage_street, percentage_segments]
-    
-    # Determine fill colors
     bar_colors = ['tab:blue', 'tab:red']
 
     # Create the plot
