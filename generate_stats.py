@@ -15,18 +15,18 @@ import os
 import re
 import argparse
 import json
-import numpy as np
 from collections import defaultdict
 matplotlib.use('Agg')
-
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
         "--users",
         nargs='+',
         default=['Hubert', 'PA'],
-        help="User from which to generate the stats. Default is all (PA, Hubert)."
+        help="User from which to generate the stats." +
+             "Default is all (PA, Hubert). Looks for data in segments/user."
     )
+
 parser.add_argument(
         "--districts",
         nargs='+',
@@ -35,12 +35,14 @@ parser.add_argument(
                  "Horta_Guinardo", "Nou_Barris", "Sant_Andreu", "Sant_Marti"],
         help="Specific district name or 'all' to process everything."
     )
+
 parser.add_argument(
         "--color",
         type=str,
         default="red",
         help="The highlight color for the mapped streets. Default is 'red'."
     )
+
 parser.add_argument(
         "--generate_missing_streets_user",
         nargs='+',
@@ -84,12 +86,12 @@ for district in list_districts:
         ox.save_graphml(G=graph, filepath=filepath)
     else:
         graph = ox.load_graphml(filepath)
-    
     edges_to_remove = [
         (u, v, k) for u, v, k, data in graph.edges(keys=True, data=True)
         if data.get('length', 0) < 25
     ]
     graph.remove_edges_from(edges_to_remove)
+    # print(f"Removed {len(edges_to_remove)} short edges from {district}")
     graph_dict[district] = graph
 
     from utils import normalize_street_name
@@ -124,7 +126,6 @@ for user in users:
     coords, _, dates_gpx = get_coords_dates_gpx(user)
     unique_days = sorted(list(set(d.strftime("%Y-%m-%d") for d in dates_gpx)))
     full_history_edges = generate_list_edges(graph_dict, user, list_districts)
-    
     if args.generate_missing_streets_district:
         for district in args.generate_missing_streets_district:
             if args.generate_missing_streets_user and user in args.generate_missing_streets_user:
@@ -133,11 +134,10 @@ for user in users:
 
     last_day = unique_days[-1]
     user_last_days[user] = last_day
-    
     for current_date in unique_days:
         print(f"Processing {user} for {current_date}")
         stats_check_file = f"stats/{user}/stats-{user}.png"
-        stats_passatges_check_file = f"stats/{user}/passatges/stats-passatges-{user}.png"
+        stats_passatges_check_file = f"stats/{user}/passatges/stats-{user}.png"
 
         list_edges_snapshot = {}
         for district in list_districts:
@@ -145,7 +145,6 @@ for user in users:
                 e for e in full_history_edges[district]
                 if e[3].split('T')[0] <= current_date
             ]
-            
             colors, widths = highlight_edges(
                 graph_dict[district], {user: list_edges_snapshot}, user,
                 color, district, current_date
@@ -169,21 +168,43 @@ for user in users:
             })
 
         if current_date == last_day:
-            all_user_snapshots[user] = {dist: list(edges) for dist, edges in list_edges_snapshot.items()}
-                                        
+            all_user_snapshots[user] = {dist: list(edges) for
+                                        dist, edges in list_edges_snapshot.items()}
+        # if not os.path.exists(stats_check_file):
         for district in list_districts:
-            plot_mapped(graph_dict[district], user, district, edge_colors[user][district],
-                        edge_widths[user][district], color, current_date, last_day)
+            plot_mapped(
+                graph_dict[district],
+                user,
+                district,
+                edge_colors[user][district],
+                edge_widths[user][district],
+                color,
+                current_date,
+                last_day
+            )
             plot_mapped(graph_dict[district], user, district, edge_passatges_colors[user][district],
                         edge_passatges_widths[user][district], color, current_date, last_day, passatges=True)
 
         # 📊 Standard Table Generation (Restored to original behavior)
         final_table, previous_table = get_final_stats(
-            user, {user: list_edges_snapshot}, graph_dict, list_districts, stats, current_date
+                    user, {user: list_edges_snapshot}, graph_dict,
+                    list_districts, stats, current_date
         )
+
         styled_stats = plot_stats(final_table, previous_table, list_districts)
         
-        # 📊 Passatges Table Generation (Keeps new custom formatting)
+# 📊 Standard Table Generation (Restored to original behavior)
+        final_table, previous_table = get_final_stats(
+            user, {user: list_edges_snapshot}, graph_dict, list_districts, stats, current_date
+        )
+        # Ensure raw data columns don't carry unexpected spacing modifications
+        final_table.columns = final_table.columns.str.strip()
+        if isinstance(previous_table, pd.DataFrame):
+            previous_table.columns = previous_table.columns.str.strip()
+            
+        styled_stats = plot_stats(final_table, previous_table, list_districts)
+        
+        # 📊 Passatges Table Generation (Keeps custom passatges formatting)
         p_rows = []
         p_prev_rows = []
         for district in list_districts:
@@ -206,17 +227,24 @@ for user in users:
             dataframe_to_png(styled_p_stats.data, stats_passatges_check_file, list_districts)
             
             for district in list_districts:
-                plot_district_user_bars(final_table, user, district) # Original Standard Bar Style
-                plot_district_user_bars_passatges(df_p_curr, user, district) # New Passatges Bar Style
+                plot_district_user_bars(final_table, user, district, passatges=False) # Unaltered Standard Multi-bar Style
+                plot_district_user_bars(df_p_curr, user, district, passatges=True) # Fixed Passatges Single-bar Style
+#                plot_district_user_bars(final_table, user, district) # Unaltered Standard Multi-bar Style
+#                plot_district_user_bars_passatges(df_p_curr, user, district) # Fixed Passatges Single-bar Style
+            for district in list_districts:
+                plot_district_user_bars(final_table, user, district, passatges=False) # Original Standard Bar Style
+                plot_district_user_bars(df_p_curr, user, district, passatges=True) # New Passatges Bar Style
+#                plot_district_user_bars(final_table, user, district) # Original Standard Bar Style
+#                plot_district_user_bars_passatges(df_p_curr, user, district) # New Passatges Bar Style
                 
                 table_stats_district = filter_df_for_district(styled_stats.data, list_districts, district)
                 dataframe_to_png(table_stats_district, f"stats/{user}/stats-{district}-{user}.png", [district])
                 
                 table_p_stats_district = filter_df_for_district(styled_p_stats.data, list_districts, district)
-                dataframe_to_png(table_p_stats_district, f"stats/{user}/passatges/stats-passatges-{district}-{user}.png", [district])
+                dataframe_to_png(table_p_stats_district, f"stats/{user}/passatges/stats-{district}-{user}.png", [district])
                 create_gif(district, user)
             
-            df_p_curr.to_csv(f"stats/{user}/passatges/stats-passatges-{user}_{last_day}.csv", index=False)
+            df_p_curr.to_csv(f"stats/{user}/passatges/stats-{user}_{last_day}.csv", index=False)
 
 if len(users) >= 2:
     print("Generating Comparative Analytics Datasets...")
@@ -230,8 +258,8 @@ if len(users) >= 2:
     df_h, _ = get_final_stats("Hubert", hubert_data, graph_dict, list_districts, stats, user_last_days["Hubert"])
     plot_user_comparison_table(df_pa, df_h, list_districts, "stats/Comparison/stats-Comparison.png")
 
-    df_pa_p = pd.read_csv(f"stats/PA/passatges/stats-passatges-PA_{user_last_days['PA']}.csv")
-    df_h_p = pd.read_csv(f"stats/Hubert/passatges/stats-passatges-Hubert_{user_last_days['Hubert']}.csv")
+    df_pa_p = pd.read_csv(f"stats/PA/passatges/stats-PA_{user_last_days['PA']}.csv")
+    df_h_p = pd.read_csv(f"stats/Hubert/passatges/stats-Hubert_{user_last_days['Hubert']}.csv")
     plot_user_comparison_table(df_pa_p, df_h_p, list_districts, "stats/Comparison/passatges/stats-Comparison.png")
 
     for district in list_districts:
@@ -258,6 +286,7 @@ data_list = []
 for f in files:
     filename = os.path.basename(f)
     match = re.search(r'stats-([^-^_]+)[-_](\d{4}-\d{2}-\d{2})\.csv', filename)
+
     if match:
         user_name, date_str = match.groups()
         df_temp = pd.read_csv(f)

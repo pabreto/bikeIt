@@ -279,8 +279,10 @@ function render() {
 
   if (tableStatsElem) {
     tableStatsElem.style.display = "block";
-    const statPrefix = currentView === "passatges" ? "stats-passatges-" : "stats-";
-
+   /* const statPrefix = currentView === "passatges" ? "stats-passatges-" : "stats-"; */
+     const statPrefix = currentView === "passatges" ? "passatges/stats-" : "stats-";
+ /*   tableStatsElem.src =
+        `stats/${currentUser}/${statPrefix}${currentDistrict}-${currentUser}.png`;*/
     if (currentDistrict === "Barcelona") {
       tableStatsElem.src = `stats/${currentUser}/${statPrefix}${currentUser}.png`;
     } else {
