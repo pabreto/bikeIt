@@ -74,7 +74,6 @@ graph_dict = {}
 graph_type = "bike"
 os.makedirs("graphs", exist_ok=True)
 
-# Pre-load and cache street types per edge to maintain the speedup optimization
 passatges_cache = {}
 
 for district in list_districts:
@@ -123,14 +122,24 @@ user_last_days = {}
 passatges_snapshot_logs = {user: defaultdict(list) for user in users}
 
 for user in users:
-    coords, _, dates_gpx = get_coords_dates_gpx(user)
+    coords, _, dates_gpx, _ = get_coords_dates_gpx(user)
     unique_days = sorted(list(set(d.strftime("%Y-%m-%d") for d in dates_gpx)))
     full_history_edges = generate_list_edges(graph_dict, user, list_districts)
     if args.generate_missing_streets_district:
         for district in args.generate_missing_streets_district:
-            if args.generate_missing_streets_user and user in args.generate_missing_streets_user:
-                street_names_mapped[district] = {edge[1] for edge in full_history_edges[district]}
-                missing_streets[district, user] = get_missing_streets(street_names_mapped[district], graph_dict[district])
+            if args.generate_missing_streets_user:
+                if user in args.generate_missing_streets_user:
+                    street_names_mapped[district] = {
+                        edge[1] for edge in full_history_edges[district]}
+                    print(f"user-{user},district-{district}")
+                    missing_streets[district, user] = get_missing_streets(
+                        street_names_mapped[district],
+                        graph_dict[district])
+                    print("missing",
+                          missing_streets[district, user],
+                          len(missing_streets[district, user]))
+                else:
+                    continue
 
     last_day = unique_days[-1]
     user_last_days[user] = last_day
@@ -138,6 +147,18 @@ for user in users:
         print(f"Processing {user} for {current_date}")
         stats_check_file = f"stats/{user}/stats-{user}.png"
         stats_passatges_check_file = f"stats/{user}/passatges/stats-{user}.png"
+
+        is_historical_processed = True
+        for district in list_districts:
+            plot_name = f"plots/{user}/{district.replace(' ', '_')}-{user}.{current_date}.png"
+            if current_date != last_day and not os.path.exists(plot_name):
+                is_historical_processed = False
+                break
+
+        if current_date != last_day and is_historical_processed:
+            continue
+
+        print(f"Processing {user} for {current_date}")
 
         list_edges_snapshot = {}
         for district in list_districts:
@@ -170,7 +191,7 @@ for user in users:
         if current_date == last_day:
             all_user_snapshots[user] = {dist: list(edges) for
                                         dist, edges in list_edges_snapshot.items()}
-        # if not os.path.exists(stats_check_file):
+
         for district in list_districts:
             plot_mapped(
                 graph_dict[district],
@@ -222,7 +243,8 @@ for user in users:
         styled_p_stats = plot_stats_passatges(df_p_curr, df_p_prev, list_districts)
 
         if current_date == last_day:
-            dataframe_to_png(styled_stats.data, stats_check_file, list_districts)
+            dataframe_to_png(styled_stats.data, stats_check_file,
+                             list_districts)
             os.makedirs(f"stats/{user}/passatges", exist_ok=True)
             dataframe_to_png(styled_p_stats.data, stats_passatges_check_file, list_districts)
             
