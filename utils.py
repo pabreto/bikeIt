@@ -36,7 +36,7 @@ def get_graph_stats(graph, district):
 def save_last_read_gps_point(i, district, user):
     os.makedirs("edges/" + user, exist_ok=True)
     file_list_edges = "edges/" + user + "/last_gpx_point_" + district + "-" + user + ".txt"
-    if os.isfile(file_list_edges):
+    if os.path.isfile(file_list_edges):
         os.file.copy(file_list_edges, file_list_edges + ".prev")
     with open(file_list_edges, "w") as f:
         f.write(str(i))
@@ -125,7 +125,6 @@ def get_list_edges(graph, user, district, start=None):
                 list_edges.append((*edge_key, edge_date.isoformat()))
                 f.write(f"{(*edge_key, edge_date.isoformat())}\n")
 
-    # Save the absolute updated count checkpoint to the file
     save_last_read_gps_point(total_gpx_points, district, user)
     return list_edges
 
@@ -142,7 +141,6 @@ def generate_list_edges(graph_dict, user, list_districts):
     for district in list_districts:
         print("Generating list edges", district, user)
         last_gps_point = load_last_gps_point(district, user)
-        # Directly pass management to get_list_edges to manage smart segment extraction
         list_edges_read[district] = get_list_edges(graph_dict[district],
                                                    user,
                                                    district,
