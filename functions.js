@@ -7,6 +7,7 @@ let currentUser = defaultUser;
 let currentDistrict = defaultDistrict;
 let currentDate = null;
 let availableDates = {};
+let currentView = "standard"; // Track active sub-tab view state
 
 let container;
 let img;
@@ -52,7 +53,6 @@ function resetView() {
   scale = 1;
   posX = 0;
   posY = 0;
-
   applyTransform();
 }
 
@@ -70,6 +70,17 @@ function selectDistrict(district) {
 function selectDate(date) {
   currentDate = date;
   updateURL(currentUser, currentDistrict, date);
+}
+
+// Sub-Tab Change Handler
+function switchView(viewType) {
+  currentView = viewType;
+  
+  // Update UI sub-navigation button active classes
+  document.getElementById("btn-view-standard").classList.toggle("active", viewType === "standard");
+  document.getElementById("btn-view-passatges").classList.toggle("active", viewType === "passatges");
+  
+  render();
 }
 
 function updateURL(user, district, date = null) {
@@ -154,6 +165,9 @@ function render() {
   const mainPicElem = document.getElementById("main_pic");
   const barPicElem = document.getElementById("bar_pic");
 
+  // Determine subfolder based on active view segment selection
+  const viewSubPath = currentView === "passatges" ? "passatges/" : "";
+
   /* reset zoom ONLY when image changes */
   if (mainPicElem) {
     mainPicElem.onload = () => {
@@ -162,10 +176,10 @@ function render() {
 
     if (currentDate) {
       mainPicElem.src =
-        `plots/${currentUser}/${currentDistrict}-${currentUser}.${currentDate}.png`;
+        `plots/${currentUser}/${viewSubPath}${currentDistrict}-${currentUser}.${currentDate}.png`;
     } else {
       mainPicElem.src =
-        `plots/${currentUser}/${currentDistrict}-${currentUser}.png`;
+        `plots/${currentUser}/${viewSubPath}${currentDistrict}-${currentUser}.png`;
     }
   }
 
@@ -227,7 +241,7 @@ function render() {
     } else {
       barPicElem.style.display = "block";
     barPicElem.src =
-      `stats/${currentUser}/stats_bars_${currentDistrict}_${currentUser}.png`;
+      `stats/${currentUser}/${viewSubPath}stats_bars_${currentDistrict}_${currentUser}.png`;
    }
   }
   /* COMPARISON */
@@ -237,17 +251,19 @@ function render() {
     compSection.style.display = "flex";
     document.getElementById("comp_left_title").textContent = "PA";
     document.getElementById("comp_right_title").textContent = "Hubert";
-    document.getElementById("bar_pa").src =
-      `stats/PA/stats_bars_${currentDistrict}_PA.png`;
+    
+    const barPa = document.getElementById("bar_pa");
+    const barHubert = document.getElementById("bar_hubert");
 
-    document.getElementById("bar_hubert").src =
-      `stats/Hubert/stats_bars_${currentDistrict}_Hubert.png`;
+    barPa.style.display = "block";
+    barHubert.style.display = "block";
+    
+    // Added ${viewSubPath} here to point to the correct folder when toggled
+    barPa.src = `stats/PA/${viewSubPath}stats_bars_${currentDistrict}_PA.png`;
+    barHubert.src = `stats/Hubert/${viewSubPath}stats_bars_${currentDistrict}_Hubert.png`;
 
-    document.getElementById("comp_left").src =
-      `plots/PA/${currentDistrict}-PA.png`;
-
-    document.getElementById("comp_right").src =
-      `plots/Hubert/${currentDistrict}-Hubert.png`;
+    document.getElementById("comp_left").src = `plots/PA/${viewSubPath}${currentDistrict}-PA.png`;
+    document.getElementById("comp_right").src = `plots/Hubert/${viewSubPath}${currentDistrict}-Hubert.png`;
   } else {
     compSection.style.display = "none";
   }
@@ -263,12 +279,15 @@ function render() {
 
   if (tableStatsElem) {
     tableStatsElem.style.display = "block";
-
+   /* const statPrefix = currentView === "passatges" ? "stats-passatges-" : "stats-"; */
+     const statPrefix = currentView === "passatges" ? "passatges/stats-" : "stats-";
+ /*   tableStatsElem.src =
+        `stats/${currentUser}/${statPrefix}${currentDistrict}-${currentUser}.png`;*/
     if (currentDistrict === "Barcelona") {
-      tableStatsElem.src = `stats/${currentUser}/stats-${currentUser}.png`;
+      tableStatsElem.src = `stats/${currentUser}/${statPrefix}${currentUser}.png`;
     } else {
       tableStatsElem.src =
-        `stats/${currentUser}/stats-${currentDistrict}-${currentUser}.png`;
+        `stats/${currentUser}/${statPrefix}${currentDistrict}-${currentUser}.png`;
     }
   }
 
@@ -276,22 +295,23 @@ function render() {
   const timeseriesElem = document.getElementById("timeseries");
 
   if (timeseriesElem) {
-    if (currentUser === "Comparison") {
-      timeseriesElem.src =
-        `plots/${currentUser}/timeseries/${currentDistrict}.png`;
+    if (currentView === "passatges") {
+      timeseriesElem.style.display = "none";
     } else {
-      timeseriesElem.src =
-        `plots/${currentUser}/timeseries/${currentDistrict}-${currentUser}.png`;
+      timeseriesElem.style.display = "inline-block";
+      if (currentUser === "Comparison") {
+        timeseriesElem.src = `plots/${currentUser}/timeseries/${currentDistrict}.png`;
+      } else {
+        timeseriesElem.src = `plots/${currentUser}/timeseries/${currentDistrict}-${currentUser}.png`;
+      }
     }
   }
 
   /* NAV */
   const nav = document.getElementById("districtNav");
 
-
   if (nav) {
     nav.innerHTML = "";
-
     districts.forEach(d => {
       const btn = document.createElement("button");
       btn.textContent = d.replace(/_/g, " ");
@@ -317,7 +337,7 @@ function render() {
     label.onclick = () => selectDistrict(d);
     // console.log("district:", d);
     const imgEl = document.createElement("img");
-    imgEl.src = `plots/${currentUser}/${d}-${currentUser}.png`;
+    imgEl.src = `plots/${currentUser}/${viewSubPath}${d}-${currentUser}.png`;
     
     if (d === currentDistrict) {
       imgEl.style.outline = "5px solid #ff4444";
@@ -346,4 +366,3 @@ async function init() {
 
 window.addEventListener("load", init);
 window.addEventListener("hashchange", render);
-

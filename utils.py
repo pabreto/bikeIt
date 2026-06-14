@@ -37,7 +37,7 @@ def save_last_read_gps_point(i, district, user):
     os.makedirs("edges/" + user, exist_ok=True)
     file_list_edges = "edges/" + user + "/last_gpx_point_" + district + "-" + user + ".txt"
     if os.path.isfile(file_list_edges):
-        os.file.copy(file_list_edges, file_list_edges + ".prev")
+        shutil.copy(file_list_edges, file_list_edges + ".prev")
     with open(file_list_edges, "w") as f:
         f.write(str(i))
 
@@ -163,28 +163,60 @@ def highlight_edges(graph, list_edges, user, color, district, date):
                 edge_colors.append(color)
             edge_widths.append(1)
         else:
-            edge_colors.append("grey")
+            edge_colors.append("lightgrey")
+            edge_widths.append(0.5)
+    return edge_colors, edge_widths
+
+def highlight_edges_passatges(graph, list_edges, user, color, district, date, structural_cache):
+    edge_date_map = {data[0]: datetime.fromisoformat(data[3]) for data in list_edges[user][district]}
+    date_limit = datetime.strptime(date, "%Y-%m-%d")
+    edge_colors = []
+    edge_widths = []
+
+    for u, v, k in graph.edges(keys=True):
+        edge_id = (u, v, k)
+        is_passatge = structural_cache.get(edge_id, False)
+
+        if is_passatge:
+            if edge_id in edge_date_map:
+                if edge_date_map[edge_id] >= date_limit:
+                    edge_colors.append("green")
+                else:
+                    edge_colors.append(color)
+                edge_widths.append(1)
+            else:
+                edge_colors.append("black")
+                edge_widths.append(1)
+        else:
+            edge_colors.append("lightgrey")
             edge_widths.append(0.5)
     return edge_colors, edge_widths
 
 
-def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, date, last_day):
+def plot_mapped(graph_dict, user, district, edge_colors, edge_widths, color, date, last_day, passatges=False):
     os.makedirs("plots/"+user, exist_ok=True)
-    os.makedirs("stats/"+user, exist_ok=True)
+    os.makedirs("plots/"+user+"/passatges", exist_ok=True)
+
+    clean_dist = district.replace(' ', '_')
     if user == "Comparison":
-        plot_name = f"plots/{user}/{district.replace(' ', '_')}-{user}.png"
-        latest_plot = f"plots/{user}/{district.replace(' ', '_')}-{user}.png"
+        if not passatges:
+            plot_name = f"plots/{user}/{clean_dist}-{user}.png"
+        else:
+            plot_name = f"plots/{user}/passatges/{clean_dist}-{user}.png"
+        latest_plot = plot_name
     else:
-        plot_name = f"plots/{user}/{district.replace(' ', '_')}-{user}.{date}.png"
-        latest_plot = f"plots/{user}/{district.replace(' ', '_')}-{user}.png"
+        if not passatges:
+            plot_name = f"plots/{user}/{clean_dist}-{user}.{date}.png"
+            latest_plot = f"plots/{user}/{clean_dist}-{user}.png"
+        else:
+            plot_name = f"plots/{user}/passatges/{clean_dist}-{user}.{date}.png"
+            latest_plot = f"plots/{user}/passatges/{clean_dist}-{user}.png"
 
-    if (user == "Comparison") | ((user != "Comparison") &
-                                 (not os.path.isfile(plot_name))):
-        print(f"Plotting {district} for {date}")
-
+    if user == "Comparison" or not os.path.isfile(plot_name):
         fig, ax = ox.plot.plot_graph(
             graph_dict,
             edge_color=edge_colors,
+#            edge_linewidth=edge_widths,
             edge_linewidth=0.5,
             show=False,
             close=False,
@@ -356,10 +388,34 @@ def dataframe_to_png(df, filename, list_districts):
     plt.tight_layout()
     plt.savefig(filename, dpi=200, bbox_inches="tight")
     plt.close()
+# NEW Custom layout styling specifically matching your new requested passatges view
+def plot_stats_passatges(final_table, previous_table, list_districts):
+    if isinstance(previous_table, pd.DataFrame) and not previous_table.empty:
+        diff = final_table.set_index("districts").subtract(previous_table.set_index("districts"), fill_value=0).abs()
+        diff = diff.reset_index()
+        new_data = {
+            "mapped passatges": final_table["mapped passatges"],
+            "new passatges": diff["mapped passatges"],
+            "total passatges": final_table["total passatges"],
+            "percentage passatges": final_table["percentage passatges"]
+        }
+        df_display = pd.DataFrame(new_data)
+        df_display.insert(0, "districts", final_table["districts"])
+    else:
+        df_display = final_table.copy()
+        df_display.insert(2, "new passatges", 0)
+
+    for c in df_display.columns:
+        if df_display[c].dtype == float:
+            df_display[c] = df_display[c].round(1)
+
+    styled = df_display.style.background_gradient(cmap="Greens", subset=["percentage passatges", "new passatges"])
+    return styled
 
 def filter_df_for_district(df, list_districts, district_name):
     idx = list_districts.index(district_name)
     return df.iloc[[idx]]
+    return df[df["districts"] == district_name]
 
 def create_gif(district, user):
     images = sorted(glob.glob("plots/"+user+"/"+district.replace(' ', '_')+"-"+user+".*.png"))
@@ -396,36 +452,52 @@ def create_gif(district, user):
     with open(list_processed, "w") as f:
         json.dump(processed_images + new_images, f, indent=2)
     
+    if not images: return
+    new_img_objects = [Image.open(f) for f in images]
+    new_img_objects[0].save(
+        gif_name, save_all=True, append_images=new_img_objects[1:], duration=700, loop=1
+    )
     for img in new_img_objects:
         img.close()
 
 def merge_edges(edge_colors_pa,edge_colors_hubert):
     merged_colors = []
-    for i in range(max(len(edge_colors_hubert),len(edge_colors_pa))):
-        if edge_colors_hubert[i] == "red" or edge_colors_hubert[i] == "green":
-            if edge_colors_pa[i] == "red" or edge_colors_pa[i] == "green":
-                merged_colors.append("red")
-            else:
-                merged_colors.append("blue")
+    for i in range(max(len(edge_colors_hubert), len(edge_colors_pa))):
+        c_h = edge_colors_hubert[i]
+        c_p = edge_colors_pa[i]
+        if c_h in ["red", "green"] and c_p in ["red", "green"]:
+            merged_colors.append("red")
+        elif c_h in ["red", "green"]:
+            merged_colors.append("blue")
+        elif c_p in ["red", "green"]:
+            merged_colors.append("forestgreen")
         else:
-            if edge_colors_pa[i] == "red" or edge_colors_pa[i] == "green":
-                merged_colors.append("green")
-            else:
-                merged_colors.append("grey")
+            merged_colors.append(c_h if c_h == "black" else "lightgrey")
     return merged_colors
 
-def plot_district_user_bars(df, user, district):
+def plot_district_user_bars(df, user, district, passatges=False):
+    """
+    Generates and saves a two-bar vertical chart where colors 'fill' 
+    a 100% background bar.
+    """
     try:
         dist_data = filter_df_for_district(df, df['districts'].tolist(), district).iloc[0]
     except (IndexError, KeyError):
         return
 
-    percentage_street = dist_data['percentage street']
-    percentage_segments = dist_data['percentage segments']
+    if passatges:
+      percentage_street = dist_data['percentage passatges']
+      labels = ['Passatges']
+      values = [percentage_street]
+      bar_colors = ['tab:blue']
 
-    labels = ['Streets', 'Segments']
-    values = [percentage_street, percentage_segments]
-    bar_colors = ['tab:blue', 'tab:red']
+    else:
+      percentage_street = dist_data['percentage street']
+      percentage_segments = dist_data['percentage segments']
+      labels = ['Streets', 'Segments']
+      values = [percentage_street, percentage_segments]
+      bar_colors = ['tab:blue', 'tab:red']
+
 
     fig, ax = plt.subplots(figsize=(3, 7)) 
     
@@ -457,54 +529,64 @@ def plot_district_user_bars(df, user, district):
 
     os.makedirs(os.path.join("stats", user), exist_ok=True)
     clean_dist = district.replace(' ', '_')
-    output_filename = os.path.join("stats", user, f"stats_bars_{clean_dist}_{user}.png")
-    
+    if passatges:
+        output_filename = os.path.join("stats", user, "passatges", f"stats_bars_{clean_dist}_{user}.png")
+    #    print("saving for passatges", output_filename)
+    else:
+        output_filename = os.path.join("stats", user, f"stats_bars_{clean_dist}_{user}.png")
+    #    print("saving for streets",output_filename)
     fig.savefig(output_filename, dpi=200)
     plt.close()
 
-from shapely.geometry import Point
+def plot_district_user_bars_passatges(df, user, district):
+    """
+    Generates and saves a single-bar vertical chart for passatges 
+    representing the percentage of streets mapped (completely hides segments).
+    """
+    try:
+        # Filter for the specific district row safely
+        row = df[df["districts"] == district].iloc[0]
+    except (IndexError, KeyError):
+        return
 
-def export_snapped_gpx(graph, user, district):
-    coords_gpx, _, dates_gpx, _ = get_coords_dates_gpx(user)
-    lats = [c[0] for c in coords_gpx]
-    lons = [c[1] for c in coords_gpx]
-
-    edge_ids = ox.nearest_edges(graph, X=lons, Y=lats)
-    gdf_edges = ox.graph_to_gdfs(graph, nodes=False)
-
-    new_gpx = gpxpy.gpx.GPX()
-    gpx_track = gpxpy.gpx.GPXTrack(name=f"{user}_{district}_snapped")
-    new_gpx.tracks.append(gpx_track)
-    gpx_segment = gpxpy.gpx.GPXTrackSegment()
-    gpx_track.segments.append(gpx_segment)
-
-    for i, (u, v, k) in enumerate(edge_ids):
-        edge_data = gdf_edges.loc[(u, v, k)]
-        geometry = edge_data.get('geometry')
-        original_pt = Point(lons[i], lats[i])
-
-        if geometry is None:
-            node_u = graph.nodes[u]
-            node_v = graph.nodes[v]
-            from shapely.geometry import LineString
-            geometry = LineString([(node_u['x'], node_u['y']), (node_v['x'], node_v['y'])])
-
-        snapped_pt = geometry.interpolate(geometry.project(original_pt))
-
-        gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(
-            latitude=snapped_pt.y,
-            longitude=snapped_pt.x,
-            time=dates_gpx[i]
-        ))
-
-    os.makedirs(f"cleaned_gpx/{user}", exist_ok=True)
-    output_path = f"cleaned_gpx/{user}/{district}_snapped.gpx"
-    with open(output_path, "w") as f:
-        f.write(new_gpx.to_xml())
+    percentage_street = row['percentage passatges']
+    labels = ['Passatges']
+    values = [percentage_street]
     
-    print(f"Point-snapped GPX saved: {output_path}")
-
+    # Render layout setup
+    fig, ax = plt.subplots(figsize=(2.5, 7))
     
+    # Strip unnecessary borders to maintain design aesthetic
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    ax.set_ylim(-15, 110)
+    
+    positions = np.arange(len(labels))
+    bar_width = 0.5
+    
+    # 1. Draw the background bar container (representing 100%)
+    ax.bar(positions, [100], width=bar_width, color='#E2E8F0', edgecolor='#CBD5E1', linewidth=1.2, zorder=1)
+    
+    # 2. Draw the active progress fill (using a dark green theme for passatges)
+    ax.bar(positions, values, width=bar_width, color='#10B981', zorder=2)
+    
+    # 3. Annotate text statistics
+    # Show active mapped / total value string right above the text percentage label
+    mapped_val = int(row['mapped passatges'])
+    total_val = int(row['total passatges'])
+    
+    ax.text(0, values[0] + 2, f"{values[0]:.1f}%", ha='center', va='bottom', fontsize=12, fontweight='bold', color='#065F46', zorder=3)
+    ax.text(0, -7, f"{mapped_val}/{total_val}\nMapped", ha='center', va='top', fontsize=10, fontweight='medium', color='#334155', zorder=3)
+    
+    plt.title(f"{district.replace('_', ' ')}\n({user})", fontsize=11, fontweight='bold', pad=15)
+    
+    # Ensure save directory scope matches front-end calls
+    os.makedirs(f"stats/{user}/passatges", exist_ok=True)
+    plt.tight_layout()
+    plt.savefig(f"stats/{user}/passatges/bars-{district}-{user}.png", dpi=200)
+    plt.close()
 def get_missing_streets(mapped_streets, full_graph):
     street_names_full_graph = []
 
@@ -570,18 +652,14 @@ def plot_user_comparison_table(df_pa, df_hubert, list_districts, filename):
     df_comp = pd.merge(df_pa, df_hubert, on="districts", suffixes=('_PA', '_H'))
     base_cols = [c for c in df_pa.columns if c != "districts" and not c.startswith("total")]
     final_data = {"districts": list_districts}
-    display_cols = ["districts"]
     
     for col in base_cols:
         col_pa = f"{col}_PA"
         col_h = f"{col}_H"
-        col_diff = f"diff {col}"
-        
         final_data[col_pa] = df_comp[col_pa]        
         final_data[col_h] = df_comp[col_h]
-        final_data[col_diff] = (df_comp[col_pa] - df_comp[col_h])
-        
-        display_cols.extend([col_pa, col_h, col_diff])
+        if "percentage" not in col:
+            final_data[f"diff {col}"] = (df_comp[col_pa] - df_comp[col_h]).round(1)
 
-    df_display = pd.DataFrame(final_data)[display_cols]
-    dataframe_to_png(df_display, filename, list_districts)
+    df_final = pd.DataFrame(final_data)
+    dataframe_to_png(df_final, filename, list_districts)
