@@ -228,13 +228,20 @@ for user in users:
         # 📊 Passatges Table Generation (Keeps custom passatges formatting)
         p_rows = []
         p_prev_rows = []
+        p_history_files = sorted(glob.glob(f"stats/{user}/passatges/stats-{user}_*.csv"))
+        df_p_prev_disk = pd.read_csv(p_history_files[-2]) if p_history_files else None
         for district in list_districts:
             logs = passatges_snapshot_logs[user][district]
             curr_log = logs[-1]
-            prev_log = logs[-2] if len(logs) > 1 else curr_log
             p_rows.append({"districts": district, "mapped passatges": curr_log["mapped passatges"], "total passatges": curr_log["total passatges"]})
-            p_prev_rows.append({"districts": district, "mapped passatges": prev_log["mapped passatges"], "total passatges": prev_log["total passatges"]})
-        
+            
+            # If a history file exists on disk, use its data for the previous row; otherwise use current log
+            if df_p_prev_disk is not None and district in df_p_prev_disk['districts'].values:
+                prev_row_match = df_p_prev_disk[df_p_prev_disk['districts'] == district].iloc[0]
+                p_prev_rows.append({"districts": district, "mapped passatges": int(prev_row_match["mapped passatges"]), "total passatges": int(prev_row_match["total passatges"])})
+            else:
+                p_prev_rows.append({"districts": district, "mapped passatges": curr_log["mapped passatges"], "total passatges": curr_log["total passatges"]})
+
         df_p_curr = pd.DataFrame(p_rows)
         df_p_curr["percentage passatges"] = (df_p_curr["mapped passatges"] / df_p_curr["total passatges"].replace(0, 1)) * 100
         df_p_prev = pd.DataFrame(p_prev_rows)
@@ -264,7 +271,7 @@ for user in users:
                 
                 table_p_stats_district = filter_df_for_district(styled_p_stats.data, list_districts, district)
                 dataframe_to_png(table_p_stats_district, f"stats/{user}/passatges/stats-{district}-{user}.png", [district])
-                create_gif(district, user)
+            #    create_gif(district, user)
             
             df_p_curr.to_csv(f"stats/{user}/passatges/stats-{user}_{last_day}.csv", index=False)
 
@@ -291,7 +298,7 @@ if len(users) >= 2:
         
         df_pa_p_dist = filter_df_for_district(df_pa_p, list_districts, district)
         df_h_p_dist = filter_df_for_district(df_h_p, list_districts, district)
-        plot_user_comparison_table(df_pa_p_dist, df_h_p_dist, [district], f"stats/Comparison/passatges/stats-passatges-{district}-Comparison.png")
+        plot_user_comparison_table(df_pa_p_dist, df_h_p_dist, [district], f"stats/Comparison/passatges/stats-{district}-Comparison.png")
 
         c_colors = merge_edges(edge_colors["PA"][district], edge_colors["Hubert"][district])
         c_widths = edge_widths["PA"][district]
