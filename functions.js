@@ -11,6 +11,11 @@ let currentView = "standard"; // Track active sub-tab view state
 
 let container;
 let img;
+let overlayImg;
+let overlayImg2;
+let overlayScale = 2.6;
+let overlayScale2 = 2.6;
+let overlaysVisible=true;
 
 let scale = 1;
 let baseScale = 1;
@@ -29,6 +34,24 @@ async function loadDates() {
     console.error("Error loading dates.json:", err);
     availableDates = {};
   }
+}
+
+
+function toggleOverlays(){
+  overlaysVisible=!overlaysVisible;
+  updateOverlayVisibility();
+}
+
+
+function updateOverlayVisibility(){
+  const visible =
+    overlaysVisible && currentDistrict==="Barcelona";
+
+  if(overlayImg)
+    overlayImg.style.display=visible?"block":"none";
+
+  if(overlayImg2)
+    overlayImg2.style.display=visible?"block":"none";
 }
 
 function fitImageToContainer() {
@@ -147,14 +170,14 @@ function attachZoomPan(){
   },{passive:false});
 }
 
-function applyTransform() {
-  if (!img) return;
+function applyTransform(){
+  const mainT=`translate(-50%,-50%) translate(${posX}px,${posY}px) scale(${baseScale*scale})`;
+  const overlayT=`translate(-50%,-50%) translate(${posX}px,${posY}px) scale(${baseScale*scale*overlayScale})`;
+  const overlayT2=`translate(-50%,-50%) translate(${posX}px,${posY}px) scale(${baseScale*scale*overlayScale2})`;
 
-  img.style.transform = `
-    translate(-50%, -50%)
-    translate(${posX}px, ${posY}px)
-    scale(${baseScale * scale})
-  `;
+  if(img) img.style.transform=mainT;
+  if(overlayImg) overlayImg.style.transform=overlayT;
+  if(overlayImg2) overlayImg2.style.transform=overlayT2;
 }
 
 /* ---------------- RENDER ---------------- */
@@ -184,9 +207,17 @@ function render() {
     if (currentDate) {
       mainPicElem.src =
         `plots/${currentUser}/${viewSubPath}${currentDistrict}-${currentUser}.${currentDate}.png`;
+      overlayImg.src =
+        `plots/Barrios.png`;
+      overlayImg2.src =
+        `plots/Barrios_name.svg`;
     } else {
       mainPicElem.src =
         `plots/${currentUser}/${viewSubPath}${currentDistrict}-${currentUser}.png`;
+      overlayImg.src =
+        `plots/Barrios.png`;
+      overlayImg2.src =
+        `plots/Barrios_name.svg`;
     }
   }
 
@@ -357,6 +388,7 @@ function render() {
     container.appendChild(imgEl);
 
     grid.appendChild(container);
+    updateOverlayVisibility();
   });
   }
 }
@@ -366,6 +398,8 @@ async function init() {
 
   container = document.getElementById("imageContainer");
   img = document.getElementById("main_pic");
+  overlayImg = document.getElementById("overlay_pic");
+  overlayImg2 = document.getElementById("overlay_pic2");
 
   attachZoomPan();
   render();

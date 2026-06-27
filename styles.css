@@ -108,17 +108,26 @@ header button:hover,
   cursor: grabbing;
 }
 
-#main_pic{
+#main_pic,#overlay_pic,#overlay_pic2{
   position:absolute;
   top:50%;
   left:50%;
+  transform-origin:center center;
   max-width:none;
   max-height:none;
-  transform-origin:center center;
   user-select:none;
   -webkit-user-drag:none;
   pointer-events:none;
   will-change:transform;
+}
+
+
+#overlay_pic{
+  opacity:0.5; /* adjust transparency */
+}
+
+#overlay_pic2{
+  opacity:1; /* adjust transparency */
 }
 
 
@@ -255,4 +264,22 @@ header button:hover,
 
 .reset-view-btn:hover {
   background: rgba(0,0,0,0.8);
+}
+
+.overlay-btn{
+  position:absolute;
+  top:10px;
+  right:80px;
+  background:rgba(0,0,0,0.6);
+  color:white;
+  border:none;
+  padding:6px 10px;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:12px;
+  z-index:10;
+}
+
+.overlay-btn:hover{
+  background:rgba(0,0,0,0.8);
 }
