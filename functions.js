@@ -102,42 +102,49 @@ function readURL() {
   currentDate = parts[2] || null;
 }
 
-function attachZoomPan() {
-
-  // ZOOM (scroll)
-  container.addEventListener("wheel", (e) => {
+function attachZoomPan(){
+  container.addEventListener("wheel",(e)=>{
     e.preventDefault();
-
-    const zoomIntensity = 0.1;
-    const delta = e.deltaY < 0 ? 1 : -1;
-
-    scale = Math.min(6, Math.max(0.2, scale + delta * zoomIntensity));
-
+    const delta=e.deltaY<0?1:-1;
+    scale=Math.min(6,Math.max(0.2,scale+delta*0.1));
     applyTransform();
-  }, { passive: false });
+  },{passive:false});
 
-  // DRAG START
-  container.addEventListener("mousedown", (e) => {
-    isDragging = true;
-    startX = e.clientX - posX;
-    startY = e.clientY - posY;
+  let lastDistance=null;
+
+  container.addEventListener("pointerdown",(e)=>{
+    if(e.target.classList.contains("reset-view-btn")) return;
+    isDragging=true;
+    startX=e.clientX-posX;
+    startY=e.clientY-posY;
   });
 
-  // DRAG MOVE
-  window.addEventListener("mousemove", (e) => {
-    if (!isDragging) return;
-
-    posX = e.clientX - startX;
-    posY = e.clientY - startY;
-
+  container.addEventListener("pointermove",(e)=>{
+    if(!isDragging)return;
+    posX=e.clientX-startX;
+    posY=e.clientY-startY;
     applyTransform();
   });
 
-  // DRAG END
-  window.addEventListener("mouseup", () => {
-    isDragging = false;
+  container.addEventListener("pointerup",()=>{
+    isDragging=false;
+    lastDistance=null;
   });
 
+  container.addEventListener("touchmove",(e)=>{
+    if(e.touches.length===2){
+      e.preventDefault();
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      const distance=Math.sqrt(dx*dx+dy*dy);
+      if(lastDistance){
+        scale+=(distance-lastDistance)*0.005;
+        scale=Math.min(6,Math.max(0.2,scale));
+        applyTransform();
+      }
+      lastDistance=distance;
+    }
+  },{passive:false});
 }
 
 function applyTransform() {
