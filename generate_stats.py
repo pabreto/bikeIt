@@ -9,7 +9,7 @@ from utils import (get_graph_stats, get_missing_streets,
                    dataframe_to_png, filter_df_for_district,
                    plot_stats, create_gif, plot_district_user_bars,
                    merge_edges, plot_user_comparison_table, highlight_edges_passatges,
-                   plot_stats_passatges, plot_district_user_bars_passatges)
+                   plot_stats_passatges, plot_district_user_bars_passatges,plot_short_streets)
 import osmnx as ox
 import os
 import re
@@ -69,6 +69,7 @@ if districts == ["all"]:
                       "Nou_Barris", "Sant_Andreu", "Sant_Marti"]
 else:
     list_districts = districts
+plot_short_streets(list_districts)
 
 graph_dict = {}
 graph_type = "bike"
@@ -352,5 +353,4 @@ if data_list:
             plt.legend()
             fig.savefig(f"plots/Comparison/timeseries/{district}.png", dpi=200, bbox_inches="tight")
             plt.close(fig)
-
 print("All tasks completed successfully!")
