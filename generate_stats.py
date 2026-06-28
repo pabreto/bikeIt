@@ -85,12 +85,15 @@ for district in list_districts:
         ox.save_graphml(G=graph, filepath=filepath)
     else:
         graph = ox.load_graphml(filepath)
-    edges_to_remove = [
-        (u, v, k) for u, v, k, data in graph.edges(keys=True, data=True)
-        if data.get('length', 0) < 25
-    ]
-    graph.remove_edges_from(edges_to_remove)
-    # print(f"Removed {len(edges_to_remove)} short edges from {district}")
+
+#Uncomment to remove short edges (less than 25 meters)
+
+#    edges_to_remove = [
+#        (u, v, k) for u, v, k, data in graph.edges(keys=True, data=True)
+#        if data.get('length', 0) < 25
+#    ]
+#    graph.remove_edges_from(edges_to_remove)
+#    # print(f"Removed {len(edges_to_remove)} short edges from {district}")
     graph_dict[district] = graph
 
     from utils import normalize_street_name
