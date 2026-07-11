@@ -663,36 +663,3 @@ def plot_user_comparison_table(df_pa, df_hubert, list_districts, filename):
 
     df_final = pd.DataFrame(final_data)
     dataframe_to_png(df_final, filename, list_districts)
-
-def plot_short_streets(list_districts):
-    print("Plotting short streets for each district...")
-    graph_short_streets = {}
-    graph_type = "bike"
-
-    for district in list_districts:
-        plot_short_streets = f"plots/short_streets-{district}.png"
-        if not os.path.isfile(plot_short_streets):
-            filepath = f"graphs/{district}-{graph_type}.graphml"
-            if not os.path.isfile(filepath):
-                graph = ox.convert.to_undirected(
-                  ox.graph.graph_from_place(district + " ,Barcelona, Spain",
-                                      network_type=graph_type))
-                ox.save_graphml(G=graph, filepath=filepath)
-            else:
-                graph = ox.load_graphml(filepath)
-            edges_to_remove = [
-                (u, v, k) for u, v, k, data in graph.edges(keys=True, data=True)
-                if data.get('length', 0) >= 25
-            ]
-            graph.remove_edges_from(edges_to_remove)
-            graph_short_streets[district] = graph
-            fig, ax = ox.plot.plot_graph(
-                graph_short_streets[district],
-                edge_color="lightgrey",
-                edge_linewidth=0.5,
-                node_size=0,
-                bgcolor="white",
-                show=False,
-                close=False)
-            fig.savefig(plot_short_streets,transparent=True,dpi=250, bbox_inches='tight')
-            plt.close(fig) 
