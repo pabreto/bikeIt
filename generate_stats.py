@@ -229,7 +229,7 @@ for user in users:
         p_rows = []
         p_prev_rows = []
         p_history_files = sorted(glob.glob(f"stats/{user}/passatges/stats-{user}_*.csv"))
-        df_p_prev_disk = pd.read_csv(p_history_files[-2]) if p_history_files else None
+        df_p_prev_disk = pd.read_csv(p_history_files[-1]) if p_history_files else None
         for district in list_districts:
             logs = passatges_snapshot_logs[user][district]
             curr_log = logs[-1]
