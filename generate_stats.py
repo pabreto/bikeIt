@@ -85,11 +85,11 @@ for district in list_districts:
         ox.save_graphml(G=graph, filepath=filepath)
     else:
         graph = ox.load_graphml(filepath)
-    edges_to_remove = [
-        (u, v, k) for u, v, k, data in graph.edges(keys=True, data=True)
-        if data.get('length', 0) < 25
-    ]
-    graph.remove_edges_from(edges_to_remove)
+    #edges_to_remove = [
+    #    (u, v, k) for u, v, k, data in graph.edges(keys=True, data=True)
+    #    if data.get('length', 0) < 25
+    #]
+    #graph.remove_edges_from(edges_to_remove)
     # print(f"Removed {len(edges_to_remove)} short edges from {district}")
     graph_dict[district] = graph
 
